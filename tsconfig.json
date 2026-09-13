@@ -41,10 +41,10 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "paths": {
-      "@shopeer/domain": ["./domain/"],
-      "@shopeer/case": ["./case/"],
-      "@shopeer/infra": ["./infra/"],
-      "@shopeer/app": ["./app/"]
+      "@shopeer/domain": ["./domain"],
+      "@shopeer/case": ["./case"],
+      "@shopeer/infra": ["./infra"],
+      "@shopeer/app": ["./app"]
     }
   },
   "exclude": ["node_modules", "dist/**/*", ".next/**/*"]
