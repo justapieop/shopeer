@@ -1,0 +1,5 @@
+{
+  "name": "@shopeer/app",
+  "main": "src/index.ts",
+  "type": "module"
+}

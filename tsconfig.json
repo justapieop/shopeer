@@ -3,7 +3,7 @@
   "compilerOptions": {
     // File Layout
     // "rootDir": "./src",
-    // "outDir": "./dist",
+    "outDir": "./dist",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
@@ -41,7 +41,10 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "paths": {
-      
+      "@shopeer/domain": ["./domain/"],
+      "@shopeer/case": ["./case/"],
+      "@shopeer/infra": ["./infra/"],
+      "@shopeer/app": ["./app/"]
     }
   },
   "exclude": ["node_modules", "dist/**/*", ".next/**/*"]
