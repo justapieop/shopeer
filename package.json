@@ -4,8 +4,8 @@
     "build": "pnpm --recursive run build",
     "start": "node app/dist/index.js",
     "build:watch": "pnpm --recursive --parallel run build:watch",
-    "start:dev": "pnpm build && pnpm start",
-    "start:watch": "concurrently --kill-others --names compile,app \"pnpm build:watch\" \"node --watch app/dist/index.js\""
+    "start:dev": "pnpm build && pnpm start | pnpm dlx pino-pretty",
+    "start:watch": "concurrently --kill-others --names compile,app \"pnpm build:watch\" \"node --watch app/dist/index.js | pnpm dlx pino-pretty\""
   },
   "devEngines": {
     "packageManager": {

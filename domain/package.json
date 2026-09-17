@@ -10,7 +10,7 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "build:watch": "tsc --watch --preserveWatchOutput"
   }
 }
