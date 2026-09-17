@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./nest/modules/app/App.module.js";
@@ -9,6 +10,8 @@ export async function initInfra(): Promise<void> {
   app.useLogger(app.get(NativeLogger));
 
   const config: ConfigService = app.get(ConfigService);
+
+  console.log(config.get("NODE_ENV"))
 
   app.listen(config.getOrThrow("PORT"));
 }

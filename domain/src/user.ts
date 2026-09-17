@@ -1,4 +1,4 @@
-import { Domain, InvalidParametersError, type DomainDetails } from "./index.js";
+import { Domain, InvalidParametersError, type DomainDetails } from "./shared.js";
 import { isAlphaNumericString, isBlankString } from "./utils.js";
 
 export class User extends Domain {
@@ -47,4 +47,6 @@ export interface UserDetails extends DomainDetails {
 
 export interface UserRepository {
   save(user: User): User | Promise<User>;
+  fetchUserById(id: string): User | null | Promise<User | null>;
+  fetchUserByUsername(username: string): User | null | Promise<User | null>;
 }

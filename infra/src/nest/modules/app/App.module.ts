@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { validate } from "./AppConfig.model.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { LoggerModule, nativeLoggerOptions } from "nestjs-pino";
+import { UserModule } from "../user/User.module.js";
 
 @Module({
   imports: [
@@ -23,12 +24,13 @@ import { LoggerModule, nativeLoggerOptions } from "nestjs-pino";
         ConfigService,
       ],
       useFactory: (config: ConfigService) => { 
-        const devMode: boolean = config.get("NODE_ENV", "production") === "development";
+        const devMode: boolean = config.get<string>("NODE_ENV", "productions") .trim().toLowerCase() === "development";
+        const sslEnabled: boolean = config.get<string>("POSTGRES_SSL_ENABLE", "true").toLowerCase().trim() === "true";
 
         return {
           type: "postgres",
           host: config.getOrThrow("POSTGRES_HOST"),
-          port: config.getOrThrow("POSTGRES_PORT"),
+          port: Number(config.getOrThrow("POSTGRES_PORT")),
           useUTC: true,
           username: config.getOrThrow("POSTGRES_USER"),
           password: config.getOrThrow("POSTGRES_PASSWORD"),
@@ -38,9 +40,11 @@ import { LoggerModule, nativeLoggerOptions } from "nestjs-pino";
           autoLoadEntities: true,
           synchronize: devMode,
           logging: devMode ? "all" : [],
+          ssl: sslEnabled,
         };
       },
     }),
+    UserModule,
   ],
 })
 export class AppModule { }

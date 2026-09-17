@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import type { User, UserRepository } from "@shopeer/domain";
+import { User, type UserRepository } from "@shopeer/domain";
 import { Check, Column, CreateDateColumn, Entity, Index, PrimaryColumn, Repository, Unique } from "typeorm";
 
 @Entity({
@@ -16,8 +16,8 @@ export class UserEntity {
   @Check(`'username' ~ '^[A-Za-z0-9]+$'`)
   public readonly username!: string;
 
-  @Column({ type: "text", nullable: false, })
-  public readonly password!: string;
+  @Column({ type: "text", name: "hashed_password", nullable: false, })
+  public readonly hashedPassword!: string;
 
   @CreateDateColumn({ name: "created_at", })
   public readonly createdAt!: Date;
@@ -35,7 +35,47 @@ export class TypeOrmUserRepository implements UserRepository {
     private readonly userRepository: Repository<User>,
   ) { }
 
-  public async save(user: User): Promise<User> { 
-    return await this.userRepository.save(user);
+  public async fetchUserById(id: string): Promise<User | null> {
+    const entity: UserEntity | null = await this.userRepository.findOneBy({ id, });
+
+    if (!entity) { 
+      return null;
+    }
+
+    return toDomain(entity);
   }
+
+  public async fetchUserByUsername(username: string): Promise<User | null> {
+    const entity: UserEntity | null = await this.userRepository.findOneBy({ username, });
+
+    if (!entity) { 
+      return null;
+    }
+
+    return toDomain(entity);
+  }
+
+  public async save(user: User): Promise<User> { 
+    return await this.userRepository.save(toEntity(user));
+  }
+}
+
+function toDomain(user: UserEntity): User { 
+  return new User({
+    id: user.id,
+    username: user.username,
+    hashedPassword: user.hashedPassword,
+    createdAt: user.createdAt,
+    suspended: user.suspended,
+  });
+}
+
+function toEntity(user: User): UserEntity { 
+  return new User({
+    id: user.id,
+    username: user.username,
+    hashedPassword: user.hashedPassword,
+    createdAt: user.createdAt,
+    suspended: user.suspended,
+  });
 }
