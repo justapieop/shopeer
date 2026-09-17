@@ -2,7 +2,8 @@
   "name": "shopeer",
   "scripts": {
     "build": "pnpm --recursive run build",
-    "start": "node app/dist/index.js"
+    "start": "node app/dist/index.js",
+    "start:dev": "tsc && node app/dist/index.js | pnpm dlx pino-pretty"
   },
   "devEngines": {
     "packageManager": {
