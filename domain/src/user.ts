@@ -44,3 +44,7 @@ export interface UserDetails extends DomainDetails {
   createdAt: Date;
   suspended: boolean;
 }
+
+export interface UserRepository {
+  save(user: User): User | Promise<User>;
+}

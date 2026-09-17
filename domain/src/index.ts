@@ -1,4 +1,5 @@
 export * from "./user.js";
+export type * from "./user.js";
 
 export abstract class Domain {
   protected constructor(
