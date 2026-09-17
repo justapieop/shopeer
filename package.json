@@ -1,6 +1,9 @@
 {
   "name": "shopeer",
-  "scripts": {},
+  "scripts": {
+    "build": "pnpm --recursive run build",
+    "start": "node app/dist/index.js"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",

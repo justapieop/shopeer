@@ -1,7 +1,10 @@
 {
   "name": "@shopeer/app",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "@shopeer/infra": "workspace:*"
   }

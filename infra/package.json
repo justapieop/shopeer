@@ -1,18 +1,25 @@
 {
   "name": "@shopeer/infra",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
-    "@shopeer/domain": "workspace:*",
-    "@shopeer/case": "workspace:*",
     "@nestjs/common": "^12.0.3",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.3",
     "@nestjs/platform-express": "^12.0.3",
+    "@nestjs/typeorm": "^12.0.1",
+    "@node-rs/argon2": "^2.2.1",
+    "@shopeer/case": "workspace:*",
+    "@shopeer/domain": "workspace:*",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "typeorm": "^1.1.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.1",
