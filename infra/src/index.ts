@@ -14,7 +14,5 @@ export async function initInfra(): Promise<void> {
 
   const config: ConfigService = app.get(ConfigService);
 
-  console.log(config.get("NODE_ENV"))
-
   app.listen(config.getOrThrow("PORT"));
 }

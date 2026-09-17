@@ -8,14 +8,31 @@ import { AuthModule } from "../auth/Auth.module.js";
 
 @Module({
   imports: [
-    LoggerModule.forRoot({
-      pinoHttp: nativeLoggerOptions,
-    }),
     ConfigModule.forRoot({
       cache: true,
       expandVariables: true,
       isGlobal: true,
       validate,
+    }),
+    LoggerModule.forRootAsync({
+      imports: [
+        ConfigModule,
+      ],
+      inject: [
+        ConfigService,
+      ],
+      useFactory: (config: ConfigService) => {
+        const devMode: boolean = config.get<string>("NODE_ENV", "productions") .trim().toLowerCase() === "development";
+        return {
+          pinoHttp: {
+            ...nativeLoggerOptions,
+            level: devMode ? "debug" : "info",
+            autoLogging: devMode,
+            quietReqLogger: !devMode,
+            quietResLogger: !devMode,
+          },
+        }
+      }
     }),
     TypeOrmModule.forRootAsync({
       imports: [
