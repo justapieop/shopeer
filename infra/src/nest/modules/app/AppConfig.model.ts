@@ -1,5 +1,5 @@
 import { plainToInstance } from "class-transformer";
-import { IsEnum, IsNumber, Max, Min, validateSync, ValidationError } from "class-validator";
+import { IsEnum, IsNumber, IsString, Max, Min, validateSync, ValidationError } from "class-validator";
 
 export enum AppEnvironment { 
   Development = "development",
@@ -15,6 +15,9 @@ export class AppConfig {
 
   @IsEnum(AppEnvironment)
   public NODE_ENV!: AppEnvironment;
+
+  @IsString()
+  public JWT_SECRET!: string;
 }
 
 export function validate(config: Record<string, unknown>): AppConfig {

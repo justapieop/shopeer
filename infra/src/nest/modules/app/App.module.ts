@@ -4,6 +4,7 @@ import { validate } from "./AppConfig.model.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { LoggerModule, nativeLoggerOptions } from "nestjs-pino";
 import { UserModule } from "../user/User.module.js";
+import { AuthModule } from "../auth/Auth.module.js";
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { UserModule } from "../user/User.module.js";
       },
     }),
     UserModule,
+    AuthModule,
   ],
 })
 export class AppModule { }

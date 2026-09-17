@@ -16,7 +16,7 @@ export class User extends Domain {
     this.id = details.id;
     this.username = details.username;
     this.hashedPassword = details.hashedPassword;
-    this.createdAt = details.createdAt;
+    this.createdAt = details.createdAt ?? new Date();
     this.suspended = details.suspended;
   }
 
@@ -25,7 +25,7 @@ export class User extends Domain {
       return new InvalidParametersError("id must not be blank");
     }
 
-    if (isAlphaNumericString(this.details.username)) { 
+    if (!isAlphaNumericString(this.details.username)) { 
       return new InvalidParametersError("username must be alphanumeric");
     }
 
@@ -41,7 +41,7 @@ export interface UserDetails extends DomainDetails {
   id: string;
   username: string;
   hashedPassword: string;
-  createdAt: Date;
+  createdAt?: Date;
   suspended: boolean;
 }
 
