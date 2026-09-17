@@ -3,7 +3,9 @@
   "scripts": {
     "build": "pnpm --recursive run build",
     "start": "node app/dist/index.js",
-    "start:dev": "tsc && node app/dist/index.js | pnpm dlx pino-pretty"
+    "build:watch": "pnpm --recursive --parallel run build:watch",
+    "start:dev": "pnpm build && pnpm start",
+    "start:watch": "concurrently --kill-others --names compile,app \"pnpm build:watch\" \"node --watch app/dist/index.js\""
   },
   "devEngines": {
     "packageManager": {
@@ -16,6 +18,7 @@
   "type": "module",
   "devDependencies": {
     "@types/node": "^26.5.1",
+    "concurrently": "^9.2.1",
     "turbo": "^2.10.12",
     "typescript": "^7.0.2"
   }

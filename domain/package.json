@@ -10,6 +10,7 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "build:watch": "tsc --watch --preserveWatchOutput"
   }
 }

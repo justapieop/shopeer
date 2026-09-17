@@ -4,6 +4,7 @@
     // File Layout
     // "rootDir": "./src",
     "outDir": "./dist",
+    "noEmit": true,
     "incremental": false,
 
     // Environment Settings
@@ -44,10 +45,10 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "paths": {
-      "@shopeer/domain": ["./domain"],
-      "@shopeer/case": ["./case"],
-      "@shopeer/infra": ["./infra"],
-      "@shopeer/app": ["./app"]
+      "@shopeer/domain": ["./domain/src/index.ts"],
+      "@shopeer/case": ["./case/src/index.ts"],
+      "@shopeer/infra": ["./infra/src/index.ts"],
+      "@shopeer/app": ["./app/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist/**/*", ".next/**/*"]
