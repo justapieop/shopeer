@@ -13,7 +13,7 @@ export class UserEntity {
 
   @Column({ type: "text", nullable: false, })
   @Index()
-  @Check(`'username' ~ '^[A-Za-z0-9]+$'`)
+  @Check(`username ~ '^[A-Za-z0-9]+$'`)
   public readonly username!: string;
 
   @Column({ type: "text", name: "hashed_password", nullable: false, })

@@ -5,6 +5,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { LoggerModule, nativeLoggerOptions } from "nestjs-pino";
 import { UserModule } from "../user/User.module.js";
 import { AuthModule } from "../auth/Auth.module.js";
+import { CacheModule } from "@nestjs/cache-manager";
 
 @Module({
   imports: [
@@ -13,6 +14,9 @@ import { AuthModule } from "../auth/Auth.module.js";
       expandVariables: true,
       isGlobal: true,
       validate,
+    }),
+    CacheModule.register({
+      isGlobal: true,
     }),
     LoggerModule.forRootAsync({
       imports: [
@@ -56,9 +60,13 @@ import { AuthModule } from "../auth/Auth.module.js";
           cache: true,
           database: config.getOrThrow("POSTGRES_DB"),
           autoLoadEntities: true,
-          synchronize: devMode,
+          synchronize: false,
           logging: devMode ? "all" : [],
           ssl: sslEnabled,
+          migrations: [
+            import.meta.dirname + "/migrations/**/*{.js,.ts}"
+          ],
+          migrationsRun: true,
         };
       },
     }),
