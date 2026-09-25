@@ -5,19 +5,19 @@ import {
 } from "./shared.js";
 import { isAlphaNumericString, isBlankString } from "./utils.js";
 
-class category extends Domain {
-    public readonly categoryID!: string;
+export class Category extends Domain {
+    public readonly categoryId!: string;
     public readonly name!: string;
 
     public constructor(protected readonly details: CategoryDetails) {
         super(details);
-        this.categoryID = details.categoryID;
+        this.categoryId = details.categoryId;
         this.name = details.name;
     }
 
     public validate(): InvalidParametersError | null {
-        if (isBlankString(this.details.categoryID)) {
-            return new InvalidParametersError("categoryID must not be blank");
+        if (isBlankString(this.details.categoryId)) {
+            return new InvalidParametersError("categoryId must not be blank");
         }
 
         if (isBlankString(this.details.name)) {
@@ -29,13 +29,13 @@ class category extends Domain {
 }
 
 export interface CategoryDetails extends DomainDetails {
-    categoryID: string;
+    categoryId: string;
     name: string;
 }
 
 export interface CategoryRepository {
-    save(category: category): category | Promise<category>;
+    save(category: Category): Category | Promise<Category>;
     fetchCategoryById(
-        categoryID: string,
-    ): category | null | Promise<category | null>;
+        categoryId: string,
+    ): Category | null | Promise<Category | null>;
 }

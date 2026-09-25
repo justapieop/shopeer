@@ -5,8 +5,8 @@ import {
 } from "./shared.js";
 import { isBlankString } from "./utils.js";
 
-class product extends Domain {
-    public readonly productID!: string;
+export class Product extends Domain {
+    public readonly productId!: string;
     public readonly name!: string;
     public readonly description!: string;
     public readonly price!: number;
@@ -16,18 +16,18 @@ class product extends Domain {
 
     public constructor(protected readonly details: ProductDetails) {
         super(details);
-        this.productID = details.productID;
+        this.productId = details.productId;
         this.name = details.name;
         this.description = details.description;
         this.price = details.price;
         this.category = details.category;
         this.stock = details.stock;
-        this.imageURL = details.imageURL;
+        this.imageURL = details.imageUrl;
     }
 
     public validate(): InvalidParametersError | null {
-        if (isBlankString(this.details.productID)) {
-            return new InvalidParametersError("productID must not be blank");
+        if (isBlankString(this.details.productId)) {
+            return new InvalidParametersError("productId must not be blank");
         }
 
         if (isBlankString(this.details.name)) {
@@ -50,8 +50,8 @@ class product extends Domain {
             return new InvalidParametersError("stock must not be negative");
         }
 
-        if (isBlankString(this.details.imageURL)) {
-            return new InvalidParametersError("imageURL must not be blank");
+        if (isBlankString(this.details.imageUrl)) {
+            return new InvalidParametersError("imageUrl must not be blank");
         }
 
         return null;
@@ -59,19 +59,19 @@ class product extends Domain {
 }
 
 export interface ProductDetails extends DomainDetails {
-    productID: string;
+    productId: string;
     name: string;
     description: string;
     price: number;
     category: string;
     stock: number;
-    imageURL: string;
+    imageUrl: string;
 }
 
 export interface ProductRepository {
-    save(product: product): product | Promise<product>;
+    save(product: Product): Product | Promise<Product>;
     fetchProductById(
-        productID: string,
-    ): product | null | Promise<product | null>;
-    fetchProductsByCategory(category: string): product[] | Promise<product[]>;
+        productId: string,
+    ): Product | null | Promise<Product | null>;
+    fetchProductsByCategory(category: string): Product[] | Promise<Product[]>;
 }
