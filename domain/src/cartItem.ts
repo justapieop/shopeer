@@ -3,7 +3,7 @@ import {
     InvalidParametersError,
     type DomainDetails,
 } from "./shared.js";
-import { isBlankString } from "./utils.js";
+import { isBlankString, isPositiveInteger } from "./utils.js";
 
 export class CartItem extends Domain {
     public readonly itemId!: string;
@@ -31,13 +31,18 @@ export class CartItem extends Domain {
             return new InvalidParametersError("productId must not be blank");
         }
 
-        if (this.details.quantity <= 0) {
+        if (!isPositiveInteger(this.details.quantity)) {
             return new InvalidParametersError(
-                "quantity must be greater than 0",
+                "quantity must be a positive integer",
             );
         }
 
         return null;
+    }
+
+    /** Returns a copy of this item with another quantity (domain objects are immutable). */
+    public withQuantity(quantity: number): CartItem {
+        return new CartItem({ ...this.details, quantity, });
     }
 }
 
@@ -53,8 +58,22 @@ export interface CartItemRepository {
     fetchCartItemByItemId(
         itemId: string,
     ): CartItem | null | Promise<CartItem | null>;
+    fetchCartItem(
+        cartId: string,
+        productId: string,
+    ): CartItem | null | Promise<CartItem | null>;
     fetchCartItemsByCartId(cartId: string): CartItem[] | Promise<CartItem[]>;
     fetchCartItemsByProductId(
         productId: string,
     ): CartItem[] | Promise<CartItem[]>;
+    /**
+     * Adds `cartItem` to its cart. If the cart already has a line for the same
+     * product, increases that line's quantity by `cartItem.quantity` instead.
+     * Must be atomic so that two quick "add to cart" clicks never create two
+     * lines for one product. Returns the resulting line.
+     */
+    addOrIncreaseQuantity(cartItem: CartItem): CartItem | Promise<CartItem>;
+    /** Returns false when the cart has no line for this product. */
+    deleteCartItem(cartId: string, productId: string): boolean | Promise<boolean>;
+    deleteCartItemsByCartId(cartId: string): void | Promise<void>;
 }

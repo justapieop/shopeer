@@ -3,7 +3,7 @@ import {
     InvalidParametersError,
     type DomainDetails,
 } from "./shared.js";
-import { isAlphaNumericString, isBlankString } from "./utils.js";
+import { isBlankString } from "./utils.js";
 
 export class Category extends Domain {
     public readonly categoryId!: string;
@@ -38,4 +38,5 @@ export interface CategoryRepository {
     fetchCategoryById(
         categoryId: string,
     ): Category | null | Promise<Category | null>;
+    fetchAllCategories(): Category[] | Promise<Category[]>;
 }
