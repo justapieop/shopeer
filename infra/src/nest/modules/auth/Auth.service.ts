@@ -4,7 +4,7 @@ import { Algorithm, hash, verify } from "@node-rs/argon2";
 import { UserUseCase } from "@shopeer/case";
 import { User } from "@shopeer/domain";
 import { ConfigService } from "@nestjs/config";
-import jwt from "node-jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 @Injectable()
 export class AuthService {

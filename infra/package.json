@@ -30,7 +30,6 @@
     "cookie-parser": "^1.4.7",
     "jsonwebtoken": "^9.0.3",
     "nestjs-pino": "^5.2.0",
-    "node-jsonwebtoken": "^0.0.1",
     "pg": "^8.23.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
