@@ -24,6 +24,7 @@ import type { UserRepository } from "@shopeer/domain";
   ],
   exports: [
     UserUseCase,
+    TypeOrmUserRepository,
   ],
 })
 export class UserModule { }

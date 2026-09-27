@@ -6,6 +6,9 @@ import { LoggerModule, nativeLoggerOptions } from "nestjs-pino";
 import { UserModule } from "../user/User.module.js";
 import { AuthModule } from "../auth/Auth.module.js";
 import { CacheModule } from "@nestjs/cache-manager";
+import { ProductModule } from "../product/Product.module.js";
+import { CartModule } from "../cart/Cart.module.js";
+import { OrderModule } from "../order/Order.module.js";
 
 @Module({
   imports: [
@@ -72,6 +75,9 @@ import { CacheModule } from "@nestjs/cache-manager";
     }),
     UserModule,
     AuthModule,
+    ProductModule,
+    CartModule,
+    OrderModule,
   ],
 })
 export class AppModule { }
