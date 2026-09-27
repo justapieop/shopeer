@@ -2,6 +2,7 @@
   "name": "shopeer",
   "scripts": {
     "build": "pnpm --recursive run build",
+    "test": "pnpm build && pnpm --recursive --if-present run test",
     "start": "node app/dist/index.js",
     "start:dev": "pnpm build && pnpm start | pnpm dlx pino-pretty",
     "db:up": "docker compose up -d --wait",
