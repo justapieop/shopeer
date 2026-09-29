@@ -1,0 +1,156 @@
+# Test the API from VS Code with the "REST Client" extension (humao.rest-client).
+# Click "Send Request" above each request, from top to bottom: later requests
+# reuse values (user id, order id) taken from earlier responses.
+#
+# Before: Docker Desktop running, then `pnpm db:up`, `pnpm build`, `pnpm start`,
+# and `pnpm db:seed` (in another terminal) to load sample products.
+#
+# Writing rules for this file (otherwise text leaks into request bodies):
+#   - variables (@name = value) stay here, at the top, before any request
+#   - every line between two requests starts with ###
+
+@baseUrl = http://localhost:3000
+@username = hai1708
+@password = Abcdef@12345
+
+# Filled in once "Log in" has been sent. Temporary identity header, see
+# infra/src/nest/common/decorators/CurrentUserId.decorator.ts
+@userId = {{login.response.body.id}}
+@orderId = {{checkout.response.body.orderId}}
+
+### ============== 1. ACCOUNT ==============
+
+### Register: send ONCE per username (again gives 400 "already exists").
+### To use a new account, change @username at the top of the file.
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Log in: REQUIRED before the cart requests; send again after reopening VS Code.
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### ============== 2. CATALOG (no login needed) ==============
+
+### All categories
+GET {{baseUrl}}/categories
+
+### All products
+GET {{baseUrl}}/products
+
+### Products of one category
+GET {{baseUrl}}/products?categoryId=cat-books
+
+### One product
+GET {{baseUrl}}/products/prod-last-one
+
+### Unknown product -> 404 (expected)
+GET {{baseUrl}}/products/does-not-exist
+
+### ============== 3. CART ==============
+
+### View my cart (created empty on first call)
+GET {{baseUrl}}/cart
+X-User-Id: {{userId}}
+
+### Add 2 T-shirts
+POST {{baseUrl}}/cart/items
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "productId": "prod-tshirt",
+  "quantity": 2
+}
+
+### Add 1 more T-shirt -> quantities add up to 3
+POST {{baseUrl}}/cart/items
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "productId": "prod-tshirt",
+  "quantity": 1
+}
+
+### Add the last book in stock
+POST {{baseUrl}}/cart/items
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "productId": "prod-last-one",
+  "quantity": 1
+}
+
+### Change the T-shirt quantity to 5
+PATCH {{baseUrl}}/cart/items/prod-tshirt
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "quantity": 5
+}
+
+### Invalid quantity -> 400 (expected)
+POST {{baseUrl}}/cart/items
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "productId": "prod-tshirt",
+  "quantity": 0
+}
+
+### More than the stock -> 409 OutOfStockError (expected)
+POST {{baseUrl}}/cart/items
+Content-Type: application/json
+X-User-Id: {{userId}}
+
+{
+  "productId": "prod-tshirt",
+  "quantity": 1000
+}
+
+### Missing X-User-Id header -> 401 (expected)
+GET {{baseUrl}}/cart
+
+### Remove the book from the cart (optional; skip it to buy the book)
+DELETE {{baseUrl}}/cart/items/prod-last-one
+X-User-Id: {{userId}}
+
+### Empty the whole cart (optional)
+DELETE {{baseUrl}}/cart
+X-User-Id: {{userId}}
+
+### ============== 4. CHECKOUT & ORDERS ==============
+
+### Checkout the whole cart -> 201 + the order (409 if the cart is empty)
+# @name checkout
+POST {{baseUrl}}/checkout
+X-User-Id: {{userId}}
+
+### Cart is empty after checkout
+GET {{baseUrl}}/cart
+X-User-Id: {{userId}}
+
+### Stock went down (the last book now shows stock 0)
+GET {{baseUrl}}/products/prod-last-one
+
+### My orders, newest first
+GET {{baseUrl}}/orders
+X-User-Id: {{userId}}
+
+### One order (the one created by "Checkout" above)
+GET {{baseUrl}}/orders/{{orderId}}
+X-User-Id: {{userId}}
