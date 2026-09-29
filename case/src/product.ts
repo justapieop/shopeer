@@ -1,10 +1,9 @@
 import {
   NotFoundError,
   type Category,
-  type CategoryRepository,
   type Product,
-  type ProductRepository,
 } from "@shopeer/domain";
+import type { CategoryRepository, ProductRepository } from "./ports.js";
 
 export class ProductUseCase {
   public constructor(

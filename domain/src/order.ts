@@ -117,23 +117,3 @@ export interface OrderDetails extends DomainDetails {
     items: OrderItem[];
     createdAt?: Date;
 }
-
-export interface OrderRepository {
-    /**
-     * Persists a new order created from the cart `cartId`, all or nothing:
-     *
-     * 1. Checks that the cart still holds exactly the ordered products and
-     *    quantities, otherwise throws `CartChangedError`.
-     * 2. Takes each item's quantity out of its product's stock. Must be safe
-     *    against concurrent checkouts: stock never goes below zero and one unit
-     *    is never sold twice. If any product lacks stock, throws
-     *    `OutOfStockError` listing every such product.
-     * 3. Saves the order with its items.
-     * 4. Removes the ordered lines from the cart.
-     *
-     * When an error is thrown, nothing is changed.
-     */
-    placeOrder(order: Order, cartId: string): void | Promise<void>;
-    fetchOrderById(orderId: string): Order | null | Promise<Order | null>;
-    fetchOrdersByUserId(userId: string): Order[] | Promise<Order[]>;
-}

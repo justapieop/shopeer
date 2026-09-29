@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { User, type UserRepository } from "@shopeer/domain";
+import { User } from "@shopeer/domain";
+import type { UserRepository } from "@shopeer/case";
 import { Check, Column, CreateDateColumn, Entity, Index, PrimaryColumn, Repository, Unique } from "typeorm";
 
 @Entity({

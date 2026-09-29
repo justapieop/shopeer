@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Category, type CategoryRepository } from "@shopeer/domain";
+import { Category } from "@shopeer/domain";
+import type { CategoryRepository } from "@shopeer/case";
 import { Column, Entity, PrimaryColumn, Repository } from "typeorm";
 
 @Entity({

@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ProductUseCase } from "@shopeer/case";
-import type { CategoryRepository, ProductRepository } from "@shopeer/domain";
+import type { CategoryRepository, ProductRepository } from "@shopeer/case";
 import { CategoryEntity, TypeOrmCategoryRepository } from "./Category.repository.js";
 import { CategoryController, ProductController } from "./Product.controller.js";
 import { ProductEntity, TypeOrmProductRepository } from "./Product.repository.js";

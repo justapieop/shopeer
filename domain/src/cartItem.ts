@@ -52,28 +52,3 @@ export interface CartItemDetails extends DomainDetails {
     productId: string;
     quantity: number;
 }
-
-export interface CartItemRepository {
-    save(cartItem: CartItem): CartItem | Promise<CartItem>;
-    fetchCartItemByItemId(
-        itemId: string,
-    ): CartItem | null | Promise<CartItem | null>;
-    fetchCartItem(
-        cartId: string,
-        productId: string,
-    ): CartItem | null | Promise<CartItem | null>;
-    fetchCartItemsByCartId(cartId: string): CartItem[] | Promise<CartItem[]>;
-    fetchCartItemsByProductId(
-        productId: string,
-    ): CartItem[] | Promise<CartItem[]>;
-    /**
-     * Adds `cartItem` to its cart. If the cart already has a line for the same
-     * product, increases that line's quantity by `cartItem.quantity` instead.
-     * Must be atomic so that two quick "add to cart" clicks never create two
-     * lines for one product. Returns the resulting line.
-     */
-    addOrIncreaseQuantity(cartItem: CartItem): CartItem | Promise<CartItem>;
-    /** Returns false when the cart has no line for this product. */
-    deleteCartItem(cartId: string, productId: string): boolean | Promise<boolean>;
-    deleteCartItemsByCartId(cartId: string): void | Promise<void>;
-}

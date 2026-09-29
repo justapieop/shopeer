@@ -5,8 +5,8 @@ import {
   Order,
   OrderItem,
   OutOfStockError,
-  type OrderRepository,
 } from "@shopeer/domain";
+import type { OrderRepository } from "@shopeer/case";
 import {
   Column,
   DataSource,

@@ -77,13 +77,3 @@ export interface ProductDetails extends DomainDetails {
     stock: number;
     imageUrl: string;
 }
-
-export interface ProductRepository {
-    save(product: Product): Product | Promise<Product>;
-    fetchProductById(
-        productId: string,
-    ): Product | null | Promise<Product | null>;
-    fetchProductsByIds(productIds: string[]): Product[] | Promise<Product[]>;
-    fetchAllProducts(): Product[] | Promise<Product[]>;
-    fetchProductsByCategory(categoryId: string): Product[] | Promise<Product[]>;
-}

@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { CartUseCase, type IdGenerator } from "@shopeer/case";
-import type { CartItemRepository, CartRepository, ProductRepository, UserRepository } from "@shopeer/domain";
+import { CartUseCase, type CartItemRepository, type CartRepository, type IdGenerator, type ProductRepository, type UserRepository } from "@shopeer/case";
 import { Cuid2IdGenerator } from "../../common/Cuid2IdGenerator.js";
 import { TypeOrmProductRepository } from "../product/Product.repository.js";
 import { ProductModule } from "../product/Product.module.js";

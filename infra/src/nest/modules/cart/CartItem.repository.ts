@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { CartItem, type CartItemRepository } from "@shopeer/domain";
+import { CartItem } from "@shopeer/domain";
+import type { CartItemRepository } from "@shopeer/case";
 import { Column, Entity, PrimaryColumn, Repository, Unique, type DeleteResult } from "typeorm";
 
 @Entity({

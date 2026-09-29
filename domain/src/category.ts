@@ -32,11 +32,3 @@ export interface CategoryDetails extends DomainDetails {
     categoryId: string;
     name: string;
 }
-
-export interface CategoryRepository {
-    save(category: Category): Category | Promise<Category>;
-    fetchCategoryById(
-        categoryId: string,
-    ): Category | null | Promise<Category | null>;
-    fetchAllCategories(): Category[] | Promise<Category[]>;
-}

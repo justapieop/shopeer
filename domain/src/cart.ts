@@ -39,15 +39,3 @@ export interface CartDetails extends DomainDetails {
     updatedAt?: Date;
     userId: string;
 }
-
-export interface CartRepository {
-    save(cart: Cart): Cart | Promise<Cart>;
-    fetchCartById(cartId: string): Cart | null | Promise<Cart | null>;
-    fetchCartByUserId(userId: string): Cart | null | Promise<Cart | null>;
-    /**
-     * Stores `cart` unless its user already owns a cart, and returns the user's
-     * cart either way. Must be atomic: two concurrent calls for the same user
-     * end up with a single cart (each user has at most one cart).
-     */
-    insertIfAbsent(cart: Cart): Cart | Promise<Cart>;
-}

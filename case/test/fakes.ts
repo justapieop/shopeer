@@ -1,5 +1,5 @@
 /**
- * In-memory implementations of the domain ports (repositories).
+ * In-memory implementations of the application ports (repositories).
  *
  * They let the use cases be tested without NestJS or PostgreSQL: this is the
  * practical payoff of the hexagonal architecture, since the use cases only
@@ -12,15 +12,9 @@ import {
   OutOfStockError,
   Product,
   User,
-  type CartItemRepository,
-  type CartRepository,
-  type CategoryRepository,
   type Order,
-  type OrderRepository,
-  type ProductRepository,
-  type UserRepository,
 } from "@shopeer/domain";
-import type { IdGenerator } from "../src/ports.js";
+import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, UserRepository } from "../src/ports.js";
 
 export class SequentialIdGenerator implements IdGenerator {
   private next: number = 1;

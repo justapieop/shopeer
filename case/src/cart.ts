@@ -3,14 +3,10 @@ import {
   CartItem,
   NotFoundError,
   OutOfStockError,
-  type CartItemRepository,
-  type CartRepository,
   type Product,
-  type ProductRepository,
   type User,
-  type UserRepository,
 } from "@shopeer/domain";
-import type { IdGenerator } from "./ports.js";
+import type { CartItemRepository, CartRepository, IdGenerator, ProductRepository, UserRepository } from "./ports.js";
 
 /** One line of the cart together with the product it refers to. */
 export interface CartLine {

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Product, type ProductRepository } from "@shopeer/domain";
+import { Product } from "@shopeer/domain";
+import type { ProductRepository } from "@shopeer/case";
 import { Column, Entity, In, PrimaryColumn, Repository } from "typeorm";
 import { bigintToNumber } from "../../common/transformers.js";
 

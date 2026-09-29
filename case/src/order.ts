@@ -6,13 +6,9 @@ import {
   OutOfStockError,
   type Cart,
   type CartItem,
-  type CartItemRepository,
-  type CartRepository,
-  type OrderRepository,
   type Product,
-  type ProductRepository,
 } from "@shopeer/domain";
-import type { IdGenerator } from "./ports.js";
+import type { CartItemRepository, CartRepository, IdGenerator, OrderRepository, ProductRepository } from "./ports.js";
 
 export class OrderUseCase {
   public constructor(
