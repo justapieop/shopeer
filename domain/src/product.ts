@@ -10,7 +10,7 @@ export class Product extends Domain {
     public readonly name!: string;
     public readonly description!: string;
     public readonly price!: number;
-    public readonly category!: string;
+    public readonly categoryId!: string;
     public readonly stock!: number;
     public readonly imageURL!: string;
 
@@ -20,7 +20,7 @@ export class Product extends Domain {
         this.name = details.name;
         this.description = details.description;
         this.price = details.price;
-        this.category = details.category;
+        this.categoryId = details.categoryId;
         this.stock = details.stock;
         this.imageURL = details.imageUrl;
     }
@@ -42,8 +42,8 @@ export class Product extends Domain {
             return new InvalidParametersError("price must be greater than 0");
         }
 
-        if (isBlankString(this.details.category)) {
-            return new InvalidParametersError("category must not be blank");
+        if (isBlankString(this.details.categoryId)) {
+            return new InvalidParametersError("categoryId must not be blank");
         }
 
         if (this.details.stock < 0) {
@@ -63,7 +63,7 @@ export interface ProductDetails extends DomainDetails {
     name: string;
     description: string;
     price: number;
-    category: string;
+    categoryId: string;
     stock: number;
     imageUrl: string;
 }
@@ -73,5 +73,5 @@ export interface ProductRepository {
     fetchProductById(
         productId: string,
     ): Product | null | Promise<Product | null>;
-    fetchProductsByCategory(category: string): Product[] | Promise<Product[]>;
+    fetchProductsByCategory(categoryId: string): Product[] | Promise<Product[]>;
 }
