@@ -68,6 +68,7 @@ export class Order extends Domain {
     public readonly orderId!: string;
     public readonly userId!: string;
     public readonly items!: readonly OrderItem[];
+    public readonly status!: "pending" | "completed" | "cancelled";
     /** Sum of every item's subtotal, in VND. */
     public readonly totalAmount!: number;
     public readonly createdAt!: Date;
@@ -76,6 +77,7 @@ export class Order extends Domain {
         super(details);
         this.orderId = details.orderId;
         this.userId = details.userId;
+        this.status = details.status;
         this.items = [...details.items];
         this.totalAmount = details.items.reduce(
             (sum: number, item: OrderItem) => sum + item.subtotal,
@@ -91,6 +93,15 @@ export class Order extends Domain {
 
         if (isBlankString(this.details.userId)) {
             return new InvalidParametersError("userId must not be blank");
+        }
+
+        if (
+            !this.details.status ||
+            !["pending", "completed", "cancelled"].includes(this.details.status)
+        ) {
+            return new InvalidParametersError(
+                "status must be one of: pending, completed, cancelled",
+            );
         }
 
         if (this.details.items.length === 0) {
@@ -126,4 +137,5 @@ export interface OrderDetails extends DomainDetails {
     userId: string;
     items: OrderItem[];
     createdAt?: Date;
+    status: "pending" | "completed" | "cancelled";
 }
