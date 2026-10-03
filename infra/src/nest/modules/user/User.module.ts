@@ -3,7 +3,7 @@ import { UserController } from "./User.controller.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { TypeOrmUserRepository, UserEntity } from "./User.repository.js";
 import { UserUseCase } from "@shopeer/case";
-import type { UserRepository } from "@shopeer/domain";
+import type { UserRepository } from "@shopeer/case";
 
 @Module({
   imports: [
@@ -24,6 +24,7 @@ import type { UserRepository } from "@shopeer/domain";
   ],
   exports: [
     UserUseCase,
+    TypeOrmUserRepository,
   ],
 })
 export class UserModule { }

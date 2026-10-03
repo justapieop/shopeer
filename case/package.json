@@ -11,9 +11,13 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build:watch": "tsc --watch --preserveWatchOutput"
+    "build:watch": "tsc --watch --preserveWatchOutput",
+    "test": "vitest run"
   },
   "dependencies": {
     "@shopeer/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.2"
   }
 }

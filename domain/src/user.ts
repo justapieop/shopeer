@@ -46,9 +46,3 @@ export interface UserDetails extends DomainDetails {
   createdAt?: Date;
   suspended: boolean;
 }
-
-export interface UserRepository {
-  save(user: User): User | Promise<User>;
-  fetchUserById(id: string): User | null | Promise<User | null>;
-  fetchUserByUsername(username: string): User | null | Promise<User | null>;
-}

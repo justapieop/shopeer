@@ -3,16 +3,21 @@ import {
     InvalidParametersError,
     type DomainDetails,
 } from "./shared.js";
-import { isBlankString } from "./utils.js";
+import {
+    isBlankString,
+    isNonNegativeInteger,
+    isPositiveInteger,
+} from "./utils.js";
 
 export class Product extends Domain {
     public readonly productId!: string;
     public readonly name!: string;
     public readonly description!: string;
+    /** Price in VND (whole number, no decimals). */
     public readonly price!: number;
     public readonly categoryId!: string;
     public readonly stock!: number;
-    public readonly imageURL!: string;
+    public readonly imageUrl!: string;
 
     public constructor(protected readonly details: ProductDetails) {
         super(details);
@@ -22,7 +27,7 @@ export class Product extends Domain {
         this.price = details.price;
         this.categoryId = details.categoryId;
         this.stock = details.stock;
-        this.imageURL = details.imageUrl;
+        this.imageUrl = details.imageUrl;
     }
 
     public validate(): InvalidParametersError | null {
@@ -38,16 +43,20 @@ export class Product extends Domain {
             return new InvalidParametersError("description must not be blank");
         }
 
-        if (this.details.price <= 0) {
-            return new InvalidParametersError("price must be greater than 0");
+        if (!isPositiveInteger(this.details.price)) {
+            return new InvalidParametersError(
+                "price must be a positive integer",
+            );
         }
 
         if (isBlankString(this.details.categoryId)) {
             return new InvalidParametersError("categoryId must not be blank");
         }
 
-        if (this.details.stock < 0) {
-            return new InvalidParametersError("stock must not be negative");
+        if (!isNonNegativeInteger(this.details.stock)) {
+            return new InvalidParametersError(
+                "stock must be a non-negative integer",
+            );
         }
 
         if (isBlankString(this.details.imageUrl)) {
@@ -55,6 +64,15 @@ export class Product extends Domain {
         }
 
         return null;
+    }
+
+    /**
+     * Whether the stock currently loaded covers `quantity`.
+     * Only a hint for the user: the stock may change right after it was read,
+     * so checkout must still reserve stock atomically in the database.
+     */
+    public hasEnoughStock(quantity: number): boolean {
+        return this.stock >= quantity;
     }
 }
 
@@ -66,12 +84,4 @@ export interface ProductDetails extends DomainDetails {
     categoryId: string;
     stock: number;
     imageUrl: string;
-}
-
-export interface ProductRepository {
-    save(product: Product): Product | Promise<Product>;
-    fetchProductById(
-        productId: string,
-    ): Product | null | Promise<Product | null>;
-    fetchProductsByCategory(categoryId: string): Product[] | Promise<Product[]>;
 }

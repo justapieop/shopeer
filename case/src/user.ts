@@ -1,4 +1,5 @@
-import { type UserRepository, User } from "@shopeer/domain";
+import { User } from "@shopeer/domain";
+import type { UserRepository } from "./ports.js";
 
 export class UserUseCase {
   public constructor(

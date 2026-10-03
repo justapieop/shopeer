@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { User, type UserRepository } from "@shopeer/domain";
+import { User } from "@shopeer/domain";
+import type { UserRepository } from "@shopeer/case";
 import { Check, Column, CreateDateColumn, Entity, Index, PrimaryColumn, Repository, Unique } from "typeorm";
 
 @Entity({
@@ -32,7 +33,7 @@ export class UserEntity {
 export class TypeOrmUserRepository implements UserRepository { 
   public constructor(
     @InjectRepository(UserEntity)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: Repository<UserEntity>,
   ) { }
 
   public async fetchUserById(id: string): Promise<User | null> {
@@ -56,7 +57,7 @@ export class TypeOrmUserRepository implements UserRepository {
   }
 
   public async save(user: User): Promise<User> { 
-    return await this.userRepository.save(toEntity(user));
+    return toDomain(await this.userRepository.save(toEntity(user)));
   }
 }
 
@@ -71,7 +72,7 @@ function toDomain(user: UserEntity): User {
 }
 
 function toEntity(user: User): UserEntity { 
-  return new User({
+  return Object.assign(new UserEntity(), {
     id: user.id,
     username: user.username,
     hashedPassword: user.hashedPassword,

@@ -3,7 +3,7 @@ import {
     InvalidParametersError,
     type DomainDetails,
 } from "./shared.js";
-import { isBlankString } from "./utils.js";
+import { isBlankString, isPositiveInteger } from "./utils.js";
 
 export class CartItem extends Domain {
     public readonly itemId!: string;
@@ -31,13 +31,18 @@ export class CartItem extends Domain {
             return new InvalidParametersError("productId must not be blank");
         }
 
-        if (this.details.quantity <= 0) {
+        if (!isPositiveInteger(this.details.quantity)) {
             return new InvalidParametersError(
-                "quantity must be greater than 0",
+                "quantity must be a positive integer",
             );
         }
 
         return null;
+    }
+
+    /** Returns a copy of this item with another quantity (domain objects are immutable). */
+    public withQuantity(quantity: number): CartItem {
+        return new CartItem({ ...this.details, quantity, });
     }
 }
 
@@ -46,15 +51,4 @@ export interface CartItemDetails extends DomainDetails {
     cartId: string;
     productId: string;
     quantity: number;
-}
-
-export interface CartItemRepository {
-    save(cartItem: CartItem): CartItem | Promise<CartItem>;
-    fetchCartItemByItemId(
-        itemId: string,
-    ): CartItem | null | Promise<CartItem | null>;
-    fetchCartItemsByCartId(cartId: string): CartItem[] | Promise<CartItem[]>;
-    fetchCartItemsByProductId(
-        productId: string,
-    ): CartItem[] | Promise<CartItem[]>;
 }

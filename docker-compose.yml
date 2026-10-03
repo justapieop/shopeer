@@ -1,0 +1,23 @@
+# Local development database.
+# Start:  docker compose up -d
+# Stop:   docker compose down        (add -v to also delete all data)
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: shopeer-postgres
+    environment:
+      POSTGRES_USER: shopeer
+      POSTGRES_PASSWORD: shopeer
+      POSTGRES_DB: shopeer
+    ports:
+      - "5432:5432"
+    volumes:
+      - shopeer-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopeer -d shopeer"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  shopeer-pgdata:

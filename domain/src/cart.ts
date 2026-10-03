@@ -3,7 +3,7 @@ import {
     InvalidParametersError,
     type DomainDetails,
 } from "./shared.js";
-import { isAlphaNumericString, isBlankString } from "./utils.js";
+import { isBlankString } from "./utils.js";
 
 export class Cart extends Domain {
     public readonly cartId!: string;
@@ -38,10 +38,4 @@ export interface CartDetails extends DomainDetails {
     createdAt?: Date;
     updatedAt?: Date;
     userId: string;
-}
-
-export interface CartRepository {
-    save(cart: Cart): Cart | Promise<Cart>;
-    fetchCartById(cartId: string): Cart | null | Promise<Cart | null>;
-    fetchCartByUserId(userId: string): Cart | null | Promise<Cart | null>;
 }
