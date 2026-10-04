@@ -7,6 +7,7 @@ import { TypeOrmCartRepository } from "../cart/Cart.repository.js";
 import { TypeOrmCartItemRepository } from "../cart/CartItem.repository.js";
 import { ProductModule } from "../product/Product.module.js";
 import { TypeOrmProductRepository } from "../product/Product.repository.js";
+import { UserModule } from "../user/User.module.js";
 import { OrderController } from "./Order.controller.js";
 import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "./Order.repository.js";
 
@@ -15,6 +16,7 @@ import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "./Order.re
     TypeOrmModule.forFeature([OrderEntity, OrderItemEntity]),
     CartModule,
     ProductModule,
+    UserModule,
   ],
   controllers: [
     OrderController,

@@ -26,7 +26,7 @@ export class AuthService {
       id: createId(),
       username,
       hashedPassword: await hash(password, { algorithm: Algorithm["Argon2id"], memoryCost: 20480, parallelism: 2, timeCost: 3, }),
-      suspended: true,
+      suspended: false,
     });
 
     return this.userUseCase.save(newUser);

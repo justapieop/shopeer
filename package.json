@@ -4,7 +4,7 @@
     "build": "pnpm --recursive run build",
     "test": "pnpm build && pnpm --recursive --if-present run test",
     "start": "node app/dist/index.js",
-    "start:dev": "pnpm build && node app/dist/index.js | pino-pretty",
+    "start:dev": "pnpm build && node app/dist/index.js | pnpm dlx pino-pretty",
     "db:up": "docker compose up -d --wait",
     "db:seed": "docker compose exec -T postgres psql -U shopeer -d shopeer -v ON_ERROR_STOP=1 < infra/seed/dev-seed.sql",
     "race": "node scripts/race-checkout.ts"
