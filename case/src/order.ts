@@ -8,7 +8,13 @@ import {
   type CartItem,
   type Product,
 } from "@shopeer/domain";
-import type { CartItemRepository, CartRepository, IdGenerator, OrderRepository, ProductRepository } from "./ports.js";
+import type {
+  CartItemRepository,
+  CartRepository,
+  IdGenerator,
+  OrderRepository,
+  ProductRepository,
+} from "./ports.js";
 
 export class OrderUseCase {
   public constructor(
@@ -17,7 +23,7 @@ export class OrderUseCase {
     private readonly productRepository: ProductRepository,
     private readonly orderRepository: OrderRepository,
     private readonly idGenerator: IdGenerator,
-  ) { }
+  ) {}
 
   /**
    * Turns the user's whole cart into an order.
@@ -28,13 +34,15 @@ export class OrderUseCase {
    * atomically and throws `OutOfStockError` for the buyer who comes second.
    */
   public async checkout(userId: string): Promise<Order> {
-    const cart: Cart | null = await this.cartRepository.fetchCartByUserId(userId);
+    const cart: Cart | null =
+      await this.cartRepository.fetchCartByUserId(userId);
 
     if (!cart) {
       throw new EmptyCartError();
     }
 
-    const items: CartItem[] = await this.cartItemRepository.fetchCartItemsByCartId(cart.cartId);
+    const items: CartItem[] =
+      await this.cartItemRepository.fetchCartItemsByCartId(cart.cartId);
 
     if (items.length === 0) {
       throw new EmptyCartError();
@@ -52,11 +60,16 @@ export class OrderUseCase {
       .filter((productId: string) => !productsById.has(productId));
 
     if (missing.length > 0) {
-      throw new NotFoundError(`Product(s) no longer available: ${missing.join(", ")}`);
+      throw new NotFoundError(
+        `Product(s) no longer available: ${missing.join(", ")}`,
+      );
     }
 
     const outOfStock: string[] = items
-      .filter((item: CartItem) => !productsById.get(item.productId)!.hasEnoughStock(item.quantity))
+      .filter(
+        (item: CartItem) =>
+          !productsById.get(item.productId)!.hasEnoughStock(item.quantity),
+      )
       .map((item: CartItem) => item.productId);
 
     if (outOfStock.length > 0) {
@@ -67,14 +80,18 @@ export class OrderUseCase {
     const order: Order = new Order({
       orderId,
       userId,
-      items: items.map((item: CartItem) => new OrderItem({
-        orderItemId: this.idGenerator.generate(),
-        orderId,
-        productId: item.productId,
-        // Snapshot of today's price: later price changes do not alter this order.
-        unitPrice: productsById.get(item.productId)!.price,
-        quantity: item.quantity,
-      })),
+      status: "pending",
+      items: items.map(
+        (item: CartItem) =>
+          new OrderItem({
+            orderItemId: this.idGenerator.generate(),
+            orderId,
+            productId: item.productId,
+            // Snapshot of today's price: later price changes do not alter this order.
+            unitPrice: productsById.get(item.productId)!.price,
+            quantity: item.quantity,
+          }),
+      ),
     });
 
     await this.orderRepository.placeOrder(order, cart.cartId);
@@ -88,7 +105,8 @@ export class OrderUseCase {
   }
 
   public async getOrder(userId: string, orderId: string): Promise<Order> {
-    const order: Order | null = await this.orderRepository.fetchOrderById(orderId);
+    const order: Order | null =
+      await this.orderRepository.fetchOrderById(orderId);
 
     // Someone else's order is reported as "not found" so that its existence is not revealed.
     if (!order || order.userId !== userId) {

@@ -26,16 +26,16 @@ import { ProductEntity } from "../product/Product.repository.js";
   name: "orders",
 })
 export class OrderEntity {
-  @PrimaryColumn({ type: "text", })
+  @PrimaryColumn({ type: "text" })
   public readonly id!: string;
 
-  @Column({ type: "text", name: "user_id", })
+  @Column({ type: "text", name: "user_id" })
   public readonly userId!: string;
 
-  @Column({ type: "bigint", name: "total_amount", transformer: bigintToNumber, })
+  @Column({ type: "bigint", name: "total_amount", transformer: bigintToNumber })
   public readonly totalAmount!: number;
 
-  @Column({ type: "timestamptz", name: "created_at", })
+  @Column({ type: "timestamptz", name: "created_at" })
   public readonly createdAt!: Date;
 }
 
@@ -43,19 +43,19 @@ export class OrderEntity {
   name: "order_items",
 })
 export class OrderItemEntity {
-  @PrimaryColumn({ type: "text", })
+  @PrimaryColumn({ type: "text" })
   public readonly id!: string;
 
-  @Column({ type: "text", name: "order_id", })
+  @Column({ type: "text", name: "order_id" })
   public readonly orderId!: string;
 
-  @Column({ type: "text", name: "product_id", })
+  @Column({ type: "text", name: "product_id" })
   public readonly productId!: string;
 
-  @Column({ type: "bigint", name: "unit_price", transformer: bigintToNumber, })
+  @Column({ type: "bigint", name: "unit_price", transformer: bigintToNumber })
   public readonly unitPrice!: number;
 
-  @Column({ type: "integer", })
+  @Column({ type: "integer" })
   public readonly quantity!: number;
 }
 
@@ -68,7 +68,7 @@ export class TypeOrmOrderRepository implements OrderRepository {
     private readonly orderRepository: Repository<OrderEntity>,
     @InjectRepository(OrderItemEntity)
     private readonly orderItemRepository: Repository<OrderItemEntity>,
-  ) { }
+  ) {}
 
   /**
    * Everything runs inside ONE database transaction: if any step throws, the
@@ -79,7 +79,8 @@ export class TypeOrmOrderRepository implements OrderRepository {
     // sharing several products then wait for each other instead of each
     // holding a lock the other needs (a deadlock).
     const items: OrderItem[] = [...order.items].sort(
-      (a: OrderItem, b: OrderItem) => (a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0),
+      (a: OrderItem, b: OrderItem) =>
+        a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
     );
 
     await this.dataSource.transaction(async (manager: EntityManager) => {
@@ -96,7 +97,7 @@ export class TypeOrmOrderRepository implements OrderRepository {
         const result: UpdateResult = await manager
           .createQueryBuilder()
           .update(ProductEntity)
-          .set({ stock: () => `"stock" - :quantity`, })
+          .set({ stock: () => `"stock" - :quantity` })
           .where(`"id" = :productId AND "stock" >= :quantity`, {
             productId: item.productId,
             quantity: item.quantity,
@@ -122,20 +123,26 @@ export class TypeOrmOrderRepository implements OrderRepository {
         cartId,
         productId: In(items.map((item: OrderItem) => item.productId)),
       });
-      await manager.update(CartEntity, { id: cartId, }, { updatedAt: new Date(), });
+      await manager.update(
+        CartEntity,
+        { id: cartId },
+        { updatedAt: new Date() },
+      );
     });
   }
 
   public async fetchOrderById(orderId: string): Promise<Order | null> {
-    const entity: OrderEntity | null = await this.orderRepository.findOneBy({ id: orderId, });
+    const entity: OrderEntity | null = await this.orderRepository.findOneBy({
+      id: orderId,
+    });
 
     if (!entity) {
       return null;
     }
 
     const items: OrderItemEntity[] = await this.orderItemRepository.find({
-      where: { orderId, },
-      order: { productId: "ASC", },
+      where: { orderId },
+      order: { productId: "ASC" },
     });
 
     return toDomain(entity, items);
@@ -143,8 +150,8 @@ export class TypeOrmOrderRepository implements OrderRepository {
 
   public async fetchOrdersByUserId(userId: string): Promise<Order[]> {
     const entities: OrderEntity[] = await this.orderRepository.find({
-      where: { userId, },
-      order: { createdAt: "DESC", },
+      where: { userId },
+      order: { createdAt: "DESC" },
     });
 
     if (entities.length === 0) {
@@ -152,14 +159,16 @@ export class TypeOrmOrderRepository implements OrderRepository {
     }
 
     const items: OrderItemEntity[] = await this.orderItemRepository.find({
-      where: { orderId: In(entities.map((entity: OrderEntity) => entity.id)), },
-      order: { productId: "ASC", },
+      where: { orderId: In(entities.map((entity: OrderEntity) => entity.id)) },
+      order: { productId: "ASC" },
     });
 
-    return entities.map((entity: OrderEntity) => toDomain(
-      entity,
-      items.filter((item: OrderItemEntity) => item.orderId === entity.id),
-    ));
+    return entities.map((entity: OrderEntity) =>
+      toDomain(
+        entity,
+        items.filter((item: OrderItemEntity) => item.orderId === entity.id),
+      ),
+    );
   }
 }
 
@@ -168,17 +177,25 @@ export class TypeOrmOrderRepository implements OrderRepository {
  * this transaction ends, then checks they still match what is being ordered.
  * Protects against the cart being edited between reading it and ordering.
  */
-async function ensureCartUnchanged(manager: EntityManager, cartId: string, items: OrderItem[]): Promise<void> {
+async function ensureCartUnchanged(
+  manager: EntityManager,
+  cartId: string,
+  items: OrderItem[],
+): Promise<void> {
   const lines: CartItemEntity[] = await manager
     .createQueryBuilder(CartItemEntity, "line")
-    .where("line.cartId = :cartId", { cartId, })
+    .where("line.cartId = :cartId", { cartId })
     .setLock("pessimistic_write")
     .getMany();
   const quantities: Map<string, number> = new Map(
     lines.map((line: CartItemEntity) => [line.productId, line.quantity]),
   );
 
-  if (items.some((item: OrderItem) => quantities.get(item.productId) !== item.quantity)) {
+  if (
+    items.some(
+      (item: OrderItem) => quantities.get(item.productId) !== item.quantity,
+    )
+  ) {
     throw new CartChangedError();
   }
 }
@@ -188,13 +205,17 @@ function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
     orderId: entity.id,
     userId: entity.userId,
     createdAt: entity.createdAt,
-    items: items.map((item: OrderItemEntity) => new OrderItem({
-      orderItemId: item.id,
-      orderId: item.orderId,
-      productId: item.productId,
-      unitPrice: item.unitPrice,
-      quantity: item.quantity,
-    })),
+    status: "completed",
+    items: items.map(
+      (item: OrderItemEntity) =>
+        new OrderItem({
+          orderItemId: item.id,
+          orderId: item.orderId,
+          productId: item.productId,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+        }),
+    ),
   });
 }
 
