@@ -3,7 +3,7 @@ import {
     InvalidParametersError,
     type DomainDetails,
 } from "./shared.js";
-import { isAlphaNumericString, isBlankString } from "./utils.js";
+import { isBlankString } from "./utils.js";
 
 export class Transaction extends Domain {
     public readonly transactionId!: string;
@@ -54,14 +54,4 @@ export interface TransactionDetails extends DomainDetails {
     status: string;
     method: string;
     orderId: string;
-}
-
-export interface TransactionRepository {
-    save(transaction: Transaction): Transaction | Promise<Transaction>;
-    fetchTransactionsByUserId(
-        orderId: string,
-    ): Transaction[] | Promise<Transaction[]>;
-    fetchTransactionById(
-        transactionId: string,
-    ): Transaction | null | Promise<Transaction | null>;
 }

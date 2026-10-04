@@ -1,4 +1,12 @@
-import type { Cart, CartItem, Category, Order, Product, User } from "@shopeer/domain";
+import type {
+  Cart,
+  CartItem,
+  Category,
+  Order,
+  Product,
+  User,
+  Transaction,
+} from "@shopeer/domain";
 
 export interface CartRepository {
   save(cart: Cart): Cart | Promise<Cart>;
@@ -14,10 +22,17 @@ export interface CartRepository {
 
 export interface CartItemRepository {
   save(cartItem: CartItem): CartItem | Promise<CartItem>;
-  fetchCartItemByItemId(itemId: string): CartItem | null | Promise<CartItem | null>;
-  fetchCartItem(cartId: string, productId: string): CartItem | null | Promise<CartItem | null>;
+  fetchCartItemByItemId(
+    itemId: string,
+  ): CartItem | null | Promise<CartItem | null>;
+  fetchCartItem(
+    cartId: string,
+    productId: string,
+  ): CartItem | null | Promise<CartItem | null>;
   fetchCartItemsByCartId(cartId: string): CartItem[] | Promise<CartItem[]>;
-  fetchCartItemsByProductId(productId: string): CartItem[] | Promise<CartItem[]>;
+  fetchCartItemsByProductId(
+    productId: string,
+  ): CartItem[] | Promise<CartItem[]>;
   /**
    * Adds `cartItem` to its cart. If the cart already has a line for the same
    * product, increases that line's quantity by `cartItem.quantity` instead.
@@ -32,7 +47,9 @@ export interface CartItemRepository {
 
 export interface CategoryRepository {
   save(category: Category): Category | Promise<Category>;
-  fetchCategoryById(categoryId: string): Category | null | Promise<Category | null>;
+  fetchCategoryById(
+    categoryId: string,
+  ): Category | null | Promise<Category | null>;
   fetchAllCategories(): Category[] | Promise<Category[]>;
 }
 
@@ -77,4 +94,14 @@ export interface UserRepository {
  */
 export interface IdGenerator {
   generate(): string;
+}
+
+export interface TransactionRepository {
+  save(transaction: Transaction): Transaction | Promise<Transaction>;
+  fetchTransactionsByOrderId(
+    orderId: string,
+  ): Transaction[] | Promise<Transaction[]>;
+  fetchTransactionById(
+    transactionId: string,
+  ): Transaction | null | Promise<Transaction | null>;
 }
