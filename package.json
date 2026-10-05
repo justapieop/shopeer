@@ -6,7 +6,8 @@
     "start": "node app/dist/index.js",
     "start:dev": "pnpm build && node app/dist/index.js | pnpm dlx pino-pretty",
     "db:up": "docker compose up -d --wait",
-    "db:seed": "docker compose exec -T postgres psql -U shopeer -d shopeer -v ON_ERROR_STOP=1 < infra/seed/dev-seed.sql",
+    "db:migrate": "pnpm db:up && pnpm build && node infra/dist/database/migrate.js",
+    "db:seed": "pnpm db:up && pnpm build && node infra/dist/database/seed.js",
     "race": "node scripts/race-checkout.ts"
   },
   "devEngines": {

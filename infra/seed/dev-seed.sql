@@ -1,7 +1,6 @@
 -- Sample data for local development and demos.
--- Run from the repository root (after the server has started once, so the
--- migrations have created the tables):
---     pnpm db:seed
+-- Loaded by `pnpm db:seed` (infra/src/database/seed.ts), which starts the
+-- database and runs the migrations first, so the tables always exist.
 -- Safe to run again: it resets these products (including their stock).
 
 BEGIN;
