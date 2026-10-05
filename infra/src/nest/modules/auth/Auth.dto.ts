@@ -24,12 +24,7 @@ export class UserRegisterResponseDto {
   public readonly suspended!: boolean;
 }
 
-export class UserLoginResponseDto extends UserRegisterResponseDto {
-  /** Send it back as `Authorization: Bearer <accessToken>` on authenticated routes. */
-  public readonly accessToken!: string;
-}
-
-export class UserLoginDto {
+export class UserLoginDto { 
   public readonly username!: string;
   public readonly password!: string;
 }
