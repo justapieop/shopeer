@@ -134,22 +134,44 @@ describe("Order (domain)", () => {
   const item = (orderId: string, productId: string): OrderItem =>
     new OrderItem({ orderItemId: `i-${productId}`, orderId, productId, unitPrice: 10_000, quantity: 2, });
 
+  // Each rule test checks the message too: any InvalidParametersError would
+  // otherwise make it pass, even one raised by an unrelated rule.
+  const expectRule = (create: () => Order, message: string): void => {
+    expect(create).toThrow(InvalidParametersError);
+    expect(create).toThrow(message);
+  };
+
   it("computes the total from its items", () => {
-    const order: Order = new Order({ orderId: "o1", userId: "u1", items: [item("o1", "a"), item("o1", "b")], });
+    const order: Order = new Order({ orderId: "o1", userId: "u1", status: "pending", items: [item("o1", "a"), item("o1", "b")], });
 
     expect(order.totalAmount).toBe(40_000);
   });
 
   it("requires at least one item", () => {
-    expect(() => new Order({ orderId: "o1", userId: "u1", items: [], })).toThrow(InvalidParametersError);
+    expectRule(
+      () => new Order({ orderId: "o1", userId: "u1", status: "pending", items: [], }),
+      "an order must have at least one item",
+    );
   });
 
   it("rejects the same product twice", () => {
-    expect(() => new Order({ orderId: "o1", userId: "u1", items: [item("o1", "a"), item("o1", "a")], }))
-      .toThrow(InvalidParametersError);
+    expectRule(
+      () => new Order({ orderId: "o1", userId: "u1", status: "pending", items: [item("o1", "a"), item("o1", "a")], }),
+      "a product must appear only once per order",
+    );
   });
 
   it("rejects items of another order", () => {
-    expect(() => new Order({ orderId: "o1", userId: "u1", items: [item("o2", "a")], })).toThrow(InvalidParametersError);
+    expectRule(
+      () => new Order({ orderId: "o1", userId: "u1", status: "pending", items: [item("o2", "a")], }),
+      "every item must belong to this order",
+    );
+  });
+
+  it("rejects an unknown status", () => {
+    expectRule(
+      () => new Order({ orderId: "o1", userId: "u1", status: "paid" as Order["status"], items: [item("o1", "a")], }),
+      "status must be one of: pending, completed, cancelled",
+    );
   });
 });
