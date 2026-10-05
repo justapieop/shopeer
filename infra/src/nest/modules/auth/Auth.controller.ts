@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Inject, Post, Res } from "@nestjs/common";
 import type { User } from "@shopeer/domain";
-import type { UserRegistrationDto, UserRegisterResponseDto, UserLoginDto } from "./Auth.dto.js";
+import type { UserRegistrationDto, UserRegisterResponseDto, UserLoginDto, UserLoginResponseDto } from "./Auth.dto.js";
 import { AuthService } from "./Auth.service.js";
 import { type Response } from "express";
 
@@ -28,7 +28,7 @@ export class AuthController {
   }
 
   @Post("/login")
-  public async login(@Body() data: UserLoginDto, @Res({ passthrough: true }) res: Response): Promise<UserRegisterResponseDto> { 
+  public async login(@Body() data: UserLoginDto, @Res({ passthrough: true }) res: Response): Promise<UserLoginResponseDto> {
     const user: User | null = await this.authService.login(data.username, data.password);
 
     if (!user) {
@@ -44,6 +44,7 @@ export class AuthController {
       username: user.username,
       createdAt: user.createdAt,
       suspended: user.suspended,
+      accessToken: token,
     };
   }
 }
