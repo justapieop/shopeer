@@ -80,6 +80,7 @@ export class OrderUseCase {
     const order: Order = new Order({
       orderId,
       userId,
+      cartId: cart.cartId,
       status: "pending",
       items: items.map(
         (item: CartItem) =>
