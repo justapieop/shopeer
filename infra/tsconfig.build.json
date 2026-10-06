@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "src",
+    "paths": {
+      "@shopeer/domain": ["../domain/dist/index.d.ts"],
+      "@shopeer/case": ["../case/dist/index.d.ts"],
+      "express-serve-static-core": ["../node_modules/.pnpm/@types+express-serve-static-core@5.1.3/node_modules/@types/express-serve-static-core/index.d.ts"]
+    }
+  }
+}

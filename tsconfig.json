@@ -3,12 +3,14 @@
   "compilerOptions": {
     // File Layout
     // "rootDir": "./src",
-    // "outDir": "./dist",
+    "outDir": "./dist",
+    "noEmit": true,
+    "incremental": false,
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
-    "target": "esnext",
+    "target": "es2022",
     // "types": [],
     // For nodejs:
     "lib": ["esnext"],
@@ -16,8 +18,8 @@
     // and npm install -D @types/node
 
     // Other Outputs
-    "sourceMap": true,
-    "declaration": false,
+    "sourceMap": false,
+    "declaration": true,
     "declarationMap": false,
 
     // Stricter Typechecking Options
@@ -35,13 +37,18 @@
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "isolatedModules": false,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "paths": {
-      
+      "@shopeer/domain": ["./domain/src/index.ts"],
+      "@shopeer/case": ["./case/src/index.ts"],
+      "@shopeer/infra": ["./infra/src/index.ts"],
+      "@shopeer/app": ["./app/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist/**/*", ".next/**/*"]
