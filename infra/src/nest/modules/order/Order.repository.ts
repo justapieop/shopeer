@@ -203,6 +203,7 @@ async function ensureCartUnchanged(
 function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
   return new Order({
     orderId: entity.id,
+    cartId: entity.cartId,
     userId: entity.userId,
     createdAt: entity.createdAt,
     status: "completed",

@@ -10,7 +10,7 @@
 #   - every line between two requests starts with ###
 
 @baseUrl = http://localhost:3000
-@username = hai1708
+@username = shopeeruser
 @password = Abcdef@12345
 
 # Filled in once "Log in" has been sent. Temporary identity header, see
