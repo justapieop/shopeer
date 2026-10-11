@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Cart } from "@shopeer/domain";
 import type { CartRepository } from "@shopeer/case";
 import { Column, Entity, PrimaryColumn, Repository } from "typeorm";
+import { requireTransaction } from "../../../database/requireTransaction.js";
 
 @Entity({
   name: "carts",
@@ -29,6 +30,7 @@ export class TypeOrmCartRepository implements CartRepository {
   ) { }
 
   public async save(cart: Cart): Promise<Cart> {
+    requireTransaction(this.cartRepository.manager);
     return toDomain(await this.cartRepository.save(toEntity(cart)));
   }
 
@@ -48,6 +50,7 @@ export class TypeOrmCartRepository implements CartRepository {
    * instead of an error, and we read back the cart that won.
    */
   public async insertIfAbsent(cart: Cart): Promise<Cart> {
+    requireTransaction(this.cartRepository.manager);
     await this.cartRepository
       .createQueryBuilder()
       .insert()

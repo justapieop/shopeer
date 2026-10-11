@@ -1,5 +1,6 @@
 import {
   EmptyCartError,
+  CartChangedError,
   InvalidParametersError,
   NotFoundError,
   Order,
@@ -16,6 +17,7 @@ import {
   InMemoryOrderRepository,
   InMemoryProductRepository,
   InMemoryUserRepository,
+  InMemoryUnitOfWork,
   SequentialIdGenerator,
   makeProduct,
   makeUser,
@@ -36,8 +38,9 @@ describe("OrderUseCase", () => {
     products = new InMemoryProductRepository();
     cartItems = new InMemoryCartItemRepository();
     orders = new InMemoryOrderRepository(products, cartItems);
-    cartUseCase = new CartUseCase(carts, cartItems, products, users, ids);
-    orderUseCase = new OrderUseCase(carts, cartItems, products, orders, ids);
+    const unitOfWork = new InMemoryUnitOfWork(carts, cartItems, products, orders, users);
+    cartUseCase = new CartUseCase(unitOfWork, ids);
+    orderUseCase = new OrderUseCase(unitOfWork, orders, ids);
 
     users.save(makeUser("alice"));
     users.save(makeUser("bob"));
@@ -107,6 +110,68 @@ describe("OrderUseCase", () => {
       await expect(orderUseCase.checkout("alice")).rejects.toBeInstanceOf(OutOfStockError);
       expect((await cartUseCase.getCart("alice")).lines).toHaveLength(1);
     });
+
+    it("rolls back stock, saved orders and cleared cart lines after a late failure", async () => {
+      await cartUseCase.addItem("alice", "shirt", 2);
+      const placeOrder = orders.placeOrder.bind(orders);
+      const failure = new Error("failure after persistence");
+      vi.spyOn(orders, "placeOrder").mockImplementation((order, cartId) => {
+        placeOrder(order, cartId);
+        throw failure;
+      });
+
+      await expect(orderUseCase.checkout("alice")).rejects.toBe(failure);
+      expect(products.fetchProductById("shirt")!.stock).toBe(10);
+      expect(orders.orders.size).toBe(0);
+      expect((await cartUseCase.getCart("alice")).lines[0]!.item.quantity).toBe(2);
+    });
+
+    it("rejects an ordered cart line changed after the initial read", async () => {
+      await cartUseCase.addItem("alice", "shirt", 1);
+      const fetchProducts = products.fetchProductsByIds.bind(products);
+      vi.spyOn(products, "fetchProductsByIds").mockImplementationOnce((ids) => {
+        const item = [...cartItems.items.values()][0]!;
+        cartItems.save(item.withQuantity(2));
+        return fetchProducts(ids);
+      });
+
+      await expect(orderUseCase.checkout("alice")).rejects.toBeInstanceOf(CartChangedError);
+      expect(products.fetchProductById("shirt")!.stock).toBe(10);
+      expect(orders.orders.size).toBe(0);
+    });
+
+    it("allows only one competing buyer to purchase the last unit", async () => {
+      await cartUseCase.addItem("alice", "book", 1);
+      await cartUseCase.addItem("bob", "book", 1);
+      const results = await Promise.allSettled([
+        orderUseCase.checkout("alice"), orderUseCase.checkout("bob"),
+      ]);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      const rejected = results.find((result) => result.status === "rejected");
+      expect(rejected?.status === "rejected" && rejected.reason).toBeInstanceOf(OutOfStockError);
+      expect(products.fetchProductById("book")!.stock).toBe(0);
+      expect(orders.orders.size).toBe(1);
+      expect(cartItems.items.size).toBe(1);
+    });
+
+    it("uses the callback's order repository for writes and the normal repository for reads", async () => {
+      await cartUseCase.addItem("alice", "shirt", 1);
+      const readOnlyOrders = {
+        placeOrder: vi.fn(() => { throw new Error("write outside transaction"); }),
+        fetchOrderById: orders.fetchOrderById.bind(orders),
+        fetchOrdersByUserId: orders.fetchOrdersByUserId.bind(orders),
+      };
+      const carts = new InMemoryCartRepository();
+      const cart = await cartUseCase.getCart("alice");
+      carts.save(cart.cart);
+      const useCase = new OrderUseCase(
+        new InMemoryUnitOfWork(carts, cartItems, products, orders),
+        readOnlyOrders, new SequentialIdGenerator(),
+      );
+      const order = await useCase.checkout("alice");
+      expect(readOnlyOrders.placeOrder).not.toHaveBeenCalled();
+      expect(await useCase.getOrder("alice", order.orderId)).toBe(order);
+    });
   });
 
   describe("listOrders and getOrder", () => {
@@ -142,35 +207,35 @@ describe("Order (domain)", () => {
   };
 
   it("computes the total from its items", () => {
-    const order: Order = new Order({ orderId: "o1", userId: "u1", status: "pending", items: [item("o1", "a"), item("o1", "b")], });
+    const order: Order = new Order({ orderId: "o1", userId: "u1", cartId: "c1", status: "pending", items: [item("o1", "a"), item("o1", "b")], });
 
     expect(order.totalAmount).toBe(40_000);
   });
 
   it("requires at least one item", () => {
     expectRule(
-      () => new Order({ orderId: "o1", userId: "u1", status: "pending", items: [], }),
+      () => new Order({ orderId: "o1", userId: "u1", cartId: "c1", status: "pending", items: [], }),
       "an order must have at least one item",
     );
   });
 
   it("rejects the same product twice", () => {
     expectRule(
-      () => new Order({ orderId: "o1", userId: "u1", status: "pending", items: [item("o1", "a"), item("o1", "a")], }),
+      () => new Order({ orderId: "o1", userId: "u1", cartId: "c1", status: "pending", items: [item("o1", "a"), item("o1", "a")], }),
       "a product must appear only once per order",
     );
   });
 
   it("rejects items of another order", () => {
     expectRule(
-      () => new Order({ orderId: "o1", userId: "u1", status: "pending", items: [item("o2", "a")], }),
+      () => new Order({ orderId: "o1", userId: "u1", cartId: "c1", status: "pending", items: [item("o2", "a")], }),
       "every item must belong to this order",
     );
   });
 
   it("rejects an unknown status", () => {
     expectRule(
-      () => new Order({ orderId: "o1", userId: "u1", status: "paid" as Order["status"], items: [item("o1", "a")], }),
+      () => new Order({ orderId: "o1", userId: "u1", cartId: "c1", status: "paid" as Order["status"], items: [item("o1", "a")], }),
       "status must be one of: pending, completed, cancelled",
     );
   });

@@ -93,23 +93,30 @@ sequenceDiagram
     actor U as Người dùng
     participant C as OrderController<br/>(infra)
     participant UC as OrderUseCase<br/>(case)
+    participant W as UnitOfWork<br/>(infra)
     participant R as Repositories<br/>(infra)
     participant DB as PostgreSQL
 
     U->>C: POST /checkout (X-User-Id)
     C->>UC: checkout(userId)
+    UC->>W: execute(callback)
+    W->>DB: BEGIN
+    W->>UC: repositories trong transaction
+    rect rgb(235, 245, 255)
+    note over UC,DB: MỘT transaction, tất cả hoặc không gì cả
     UC->>R: đọc giỏ, các món, sản phẩm
     R->>DB: SELECT …
     UC->>UC: kiểm tra sớm: giỏ rỗng? còn hàng?<br/>tạo Order (chụp lại giá hiện tại)
     UC->>R: placeOrder(order, cartId)
-    rect rgb(235, 245, 255)
-    note over R,DB: MỘT transaction, tất cả hoặc không gì cả
     R->>DB: SELECT cart_items … FOR UPDATE (khóa giỏ, so khớp)
     R->>DB: UPDATE products SET stock = stock - n<br/>WHERE id = … AND stock >= n (theo thứ tự id)
     R->>DB: INSERT orders, order_items
     R->>DB: DELETE các món đã đặt khỏi cart_items
-    end
     R-->>UC: ok / OutOfStockError / CartChangedError
+    UC-->>W: Order / lỗi
+    W->>DB: COMMIT / ROLLBACK
+    end
+    W-->>UC: Order / lỗi
     UC-->>C: Order
     C-->>U: 201 Created (hoặc 409)
 ```
@@ -141,7 +148,7 @@ UPDATE products SET stock = stock - 1 WHERE id = 'prod-last-one' AND stock >= 1;
 - Sau khi A commit, PostgreSQL **kiểm tra lại** điều kiện `stock >= 1` với giá trị mới là `0`. Điều kiện sai, nên có **0 dòng** bị cập nhật.
 - Code thấy 0 dòng thì ném `OutOfStockError`. Transaction của B bị **rollback** và B nhận `409`.
 
-Code: `TypeOrmOrderRepository.placeOrder` trong `infra/src/nest/modules/order/Order.repository.ts`.
+Code: `TypeOrmOrderRepository.placeOrder` trong `infra/src/nest/modules/order/Order.repository.ts`. Transaction được tạo bởi `TypeOrmUnitOfWork` trong `infra/src/database/TypeOrmUnitOfWork.ts`; xem [Unit of Work](unit-of-work.md).
 
 Use case vẫn kiểm tra tồn kho sớm (`hasEnoughStock`). Bước này chỉ giúp báo lỗi nhanh trong trường hợp thường gặp; **bảo đảm thật nằm ở câu UPDATE**. Trong lần chạy thử `pnpm race` với 20 người, cả 15 người mua hụt đều vượt qua bước kiểm tra sớm (vì cùng đọc thấy "còn 5") và chỉ bị chặn ở database (log server ghi 15 lần ROLLBACK).
 
@@ -149,7 +156,7 @@ Use case vẫn kiểm tra tồn kho sớm (`hasEnoughStock`). Bước này chỉ
 
 Giỏ có điện thoại (còn hàng) và sách (hết hàng). Nếu đã trừ kho điện thoại rồi mới phát hiện sách hết, thì kho điện thoại bị trừ oan.
 
-**Cách xử lý:** mọi bước của `placeOrder` chạy trong **một transaction**. Chỉ cần một món thiếu hàng là toàn bộ bị rollback: kho các món khác được trả lại, không có đơn nào được tạo. Script `pnpm race` kiểm tra đúng điều này qua sản phẩm `prod-clean-code`: kho chỉ giảm đúng bằng số đơn thành công.
+**Cách xử lý:** `OrderUseCase.checkout` dùng `UnitOfWork.execute`, từ bước đọc giỏ đến `placeOrder`, trong **một transaction**. Chỉ cần một món thiếu hàng là toàn bộ bị rollback: kho các món khác được trả lại, không có đơn nào được tạo. Script `pnpm race` kiểm tra đúng điều này qua sản phẩm `prod-clean-code`: kho chỉ giảm đúng bằng số đơn thành công.
 
 ### 5.3. Deadlock khi nhiều đơn cùng chứa nhiều món
 

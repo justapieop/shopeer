@@ -55,9 +55,9 @@ export interface CategoryRepository {
 
 export interface OrderRepository {
   /**
-   * Persists a new order created from the cart `cartId`, all or nothing:
+   * Persists a new order created from the cart `cartId` inside UnitOfWork.execute:
    *
-   * 1. Checks that the cart still holds exactly the ordered products and
+   * 1. Checks that the cart still holds the ordered products and
    *    quantities, otherwise throws `CartChangedError`.
    * 2. Takes each item's quantity out of its product's stock. Must be safe
    *    against concurrent checkouts: stock never goes below zero and one unit
@@ -66,11 +66,27 @@ export interface OrderRepository {
    * 3. Saves the order with its items.
    * 4. Removes the ordered lines from the cart.
    *
-   * When an error is thrown, nothing is changed.
+   * Requires a transaction-scoped repository. Let errors escape the callback
+   * so the Unit of Work rolls back all changes, including earlier operations.
    */
   placeOrder(order: Order, cartId: string): void | Promise<void>;
   fetchOrderById(orderId: string): Order | null | Promise<Order | null>;
   fetchOrdersByUserId(userId: string): Order[] | Promise<Order[]>;
+}
+
+/** Repositories share one transaction and must only be used within its callback. */
+export interface RepositorySet {
+  readonly carts: CartRepository;
+  readonly cartItems: CartItemRepository;
+  readonly products: ProductRepository;
+  readonly orders: OrderRepository;
+  readonly users: UserRepository;
+  readonly categories: CategoryRepository;
+}
+
+export interface UnitOfWork<TRepositories = RepositorySet> {
+  /** Commits on success; rolls back and rethrows on failure. Resolves after commit. */
+  execute<T>(work: (repositories: TRepositories) => Promise<T>): Promise<T>;
 }
 
 export interface ProductRepository {

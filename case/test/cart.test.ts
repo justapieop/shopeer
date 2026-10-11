@@ -1,11 +1,13 @@
 import { InvalidParametersError, NotFoundError, OutOfStockError } from "@shopeer/domain";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CartUseCase, type CartView } from "../src/cart.js";
 import {
   InMemoryCartItemRepository,
   InMemoryCartRepository,
   InMemoryProductRepository,
   InMemoryUserRepository,
+  InMemoryOrderRepository,
+  InMemoryUnitOfWork,
   SequentialIdGenerator,
   makeProduct,
   makeUser,
@@ -23,7 +25,10 @@ describe("CartUseCase", () => {
     cartItems = new InMemoryCartItemRepository();
     products = new InMemoryProductRepository();
     users = new InMemoryUserRepository();
-    useCase = new CartUseCase(carts, cartItems, products, users, new SequentialIdGenerator());
+    useCase = new CartUseCase(
+      new InMemoryUnitOfWork(carts, cartItems, products, new InMemoryOrderRepository(products, cartItems), users),
+      new SequentialIdGenerator(),
+    );
 
     users.save(makeUser("alice"));
     products.save(makeProduct("shirt", 100_000, 10));
@@ -50,6 +55,13 @@ describe("CartUseCase", () => {
 
     it("rejects an unknown user", async () => {
       await expect(useCase.getCart("nobody")).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("rolls back a newly created cart when loading its view fails", async () => {
+      const failure = new Error("could not load products");
+      vi.spyOn(products, "fetchProductsByIds").mockImplementationOnce(() => { throw failure; });
+      await expect(useCase.getCart("alice")).rejects.toBe(failure);
+      expect(carts.carts.size).toBe(0);
     });
   });
 
@@ -90,6 +102,8 @@ describe("CartUseCase", () => {
 
     it("rejects more than the stock", async () => {
       await expect(useCase.addItem("alice", "shirt", 11)).rejects.toBeInstanceOf(OutOfStockError);
+      expect(carts.carts.size).toBe(0);
+      expect(cartItems.items.size).toBe(0);
     });
 
     it("counts what is already in the cart against the stock", async () => {
@@ -126,6 +140,19 @@ describe("CartUseCase", () => {
   });
 
   describe("removeItem and clearCart", () => {
+    it.each(["add", "update", "remove", "clear"])("rolls back %s when building the response fails", async (operation) => {
+      await useCase.addItem("alice", "shirt", 2);
+      const failure = new Error("response lookup failed");
+      vi.spyOn(products, "fetchProductsByIds").mockImplementationOnce(() => { throw failure; });
+      const write = {
+        add: () => useCase.addItem("alice", "shirt", 1),
+        update: () => useCase.updateItemQuantity("alice", "shirt", 3),
+        remove: () => useCase.removeItem("alice", "shirt"),
+        clear: () => useCase.clearCart("alice"),
+      }[operation]!;
+      await expect(write()).rejects.toBe(failure);
+      expect((await useCase.getCart("alice")).lines[0]!.item.quantity).toBe(2);
+    });
     it("removes one product", async () => {
       await useCase.addItem("alice", "shirt", 2);
       await useCase.addItem("alice", "book", 1);

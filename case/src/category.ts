@@ -1,13 +1,14 @@
 import { Category } from "@shopeer/domain";
-import type { CategoryRepository } from "./ports.js";
+import type { CategoryRepository, RepositorySet, UnitOfWork } from "./ports.js";
 
 export class CategoryUseCase {
     public constructor(
+        private readonly unitOfWork: UnitOfWork<Pick<RepositorySet, "categories">>,
         private readonly categoryRepository: CategoryRepository,
     ) {}
 
     public async save(category: Category): Promise<Category> {
-        return await this.categoryRepository.save(category);
+        return this.unitOfWork.execute(async ({ categories }) => categories.save(category));
     }
 
     public async fetchCategoryById(

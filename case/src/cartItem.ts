@@ -1,13 +1,14 @@
 import { CartItem } from "@shopeer/domain";
-import type { CartItemRepository } from "./ports.js";
+import type { CartItemRepository, RepositorySet, UnitOfWork } from "./ports.js";
 
 export class CartItemUseCase {
     public constructor(
+        private readonly unitOfWork: UnitOfWork<Pick<RepositorySet, "cartItems">>,
         private readonly cartItemRepository: CartItemRepository,
     ) {}
 
     public async save(cartItem: CartItem): Promise<CartItem> {
-        return await this.cartItemRepository.save(cartItem);
+        return this.unitOfWork.execute(async ({ cartItems }) => cartItems.save(cartItem));
     }
 
     public async fetchCartItemByItemId(

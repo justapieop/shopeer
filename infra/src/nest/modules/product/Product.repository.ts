@@ -4,6 +4,7 @@ import { Product } from "@shopeer/domain";
 import type { ProductRepository } from "@shopeer/case";
 import { Column, Entity, In, PrimaryColumn, Repository } from "typeorm";
 import { bigintToNumber } from "../../common/transformers.js";
+import { requireTransaction } from "../../../database/requireTransaction.js";
 
 @Entity({
   name: "products",
@@ -39,6 +40,7 @@ export class TypeOrmProductRepository implements ProductRepository {
   ) { }
 
   public async save(product: Product): Promise<Product> {
+    requireTransaction(this.productRepository.manager);
     return toDomain(await this.productRepository.save(toEntity(product)));
   }
 

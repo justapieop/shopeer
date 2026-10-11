@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Category } from "@shopeer/domain";
 import type { CategoryRepository } from "@shopeer/case";
 import { Column, Entity, PrimaryColumn, Repository } from "typeorm";
+import { requireTransaction } from "../../../database/requireTransaction.js";
 
 @Entity({
   name: "categories",
@@ -23,6 +24,7 @@ export class TypeOrmCategoryRepository implements CategoryRepository {
   ) { }
 
   public async save(category: Category): Promise<Category> {
+    requireTransaction(this.categoryRepository.manager);
     return toDomain(await this.categoryRepository.save(toEntity(category)));
   }
 

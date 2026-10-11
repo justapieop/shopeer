@@ -9,18 +9,15 @@ import {
   type Product,
 } from "@shopeer/domain";
 import type {
-  CartItemRepository,
-  CartRepository,
   IdGenerator,
   OrderRepository,
-  ProductRepository,
+  RepositorySet,
+  UnitOfWork,
 } from "./ports.js";
 
 export class OrderUseCase {
   public constructor(
-    private readonly cartRepository: CartRepository,
-    private readonly cartItemRepository: CartItemRepository,
-    private readonly productRepository: ProductRepository,
+    private readonly unitOfWork: UnitOfWork,
     private readonly orderRepository: OrderRepository,
     private readonly idGenerator: IdGenerator,
   ) {}
@@ -34,21 +31,30 @@ export class OrderUseCase {
    * atomically and throws `OutOfStockError` for the buyer who comes second.
    */
   public async checkout(userId: string): Promise<Order> {
+    return this.unitOfWork.execute((repositories) =>
+      this.checkoutWithinTransaction(userId, repositories),
+    );
+  }
+
+  private async checkoutWithinTransaction(
+    userId: string,
+    { carts, cartItems, products: productRepository, orders }: RepositorySet,
+  ): Promise<Order> {
     const cart: Cart | null =
-      await this.cartRepository.fetchCartByUserId(userId);
+      await carts.fetchCartByUserId(userId);
 
     if (!cart) {
       throw new EmptyCartError();
     }
 
     const items: CartItem[] =
-      await this.cartItemRepository.fetchCartItemsByCartId(cart.cartId);
+      await cartItems.fetchCartItemsByCartId(cart.cartId);
 
     if (items.length === 0) {
       throw new EmptyCartError();
     }
 
-    const products: Product[] = await this.productRepository.fetchProductsByIds(
+    const products: Product[] = await productRepository.fetchProductsByIds(
       items.map((item: CartItem) => item.productId),
     );
     const productsById: Map<string, Product> = new Map(
@@ -95,7 +101,7 @@ export class OrderUseCase {
       ),
     });
 
-    await this.orderRepository.placeOrder(order, cart.cartId);
+    await orders.placeOrder(order, cart.cartId);
 
     return order;
   }

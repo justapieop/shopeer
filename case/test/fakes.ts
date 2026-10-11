@@ -8,13 +8,14 @@
 import {
   Cart,
   CartItem,
+  CartChangedError,
   Category,
   OutOfStockError,
   Product,
   User,
   type Order,
 } from "@shopeer/domain";
-import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, UserRepository } from "../src/ports.js";
+import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, RepositorySet, UnitOfWork, UserRepository } from "../src/ports.js";
 
 export class SequentialIdGenerator implements IdGenerator {
   private next: number = 1;
@@ -163,6 +164,11 @@ export class InMemoryOrderRepository implements OrderRepository {
   ) { }
 
   public placeOrder(order: Order, cartId: string): void {
+    if (order.items.some((item) =>
+      this.cartItemRepository.fetchCartItem(cartId, item.productId)?.quantity !== item.quantity,
+    )) {
+      throw new CartChangedError();
+    }
     const outOfStock: string[] = order.items
       .filter((item) => !this.productRepository.fetchProductById(item.productId)?.hasEnoughStock(item.quantity))
       .map((item) => item.productId);
@@ -186,6 +192,51 @@ export class InMemoryOrderRepository implements OrderRepository {
 
   public fetchOrdersByUserId(userId: string): Order[] {
     return [...this.orders.values()].filter((order: Order) => order.userId === userId);
+  }
+}
+
+/** Serializes test transactions and restores repository maps on failure. */
+export class InMemoryUnitOfWork implements UnitOfWork {
+  private pending: Promise<void> = Promise.resolve();
+
+  public constructor(
+    private readonly carts: InMemoryCartRepository,
+    private readonly cartItems: InMemoryCartItemRepository,
+    private readonly products: InMemoryProductRepository,
+    private readonly orders: InMemoryOrderRepository,
+    private readonly users: InMemoryUserRepository = new InMemoryUserRepository(),
+    private readonly categories: InMemoryCategoryRepository = new InMemoryCategoryRepository(),
+  ) {}
+
+  public async execute<T>(work: (repositories: RepositorySet) => Promise<T>): Promise<T> {
+    const previous = this.pending;
+    let release!: () => void;
+    this.pending = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+    const restore = <V>(map: Map<string, V>): (() => void) => {
+      const snapshot = new Map(map);
+      return () => {
+        map.clear();
+        for (const [key, value] of snapshot) map.set(key, value);
+      };
+    };
+    const snapshots = [
+      restore(this.carts.carts), restore(this.cartItems.items),
+      restore(this.products.products), restore(this.orders.orders),
+      restore(this.users.users), restore(this.categories.categories),
+    ];
+    try {
+      return await work({
+        carts: this.carts, cartItems: this.cartItems,
+        products: this.products, orders: this.orders,
+        users: this.users, categories: this.categories,
+      });
+    } catch (error) {
+      snapshots.forEach((reset) => reset());
+      throw error;
+    } finally {
+      release();
+    }
   }
 }
 

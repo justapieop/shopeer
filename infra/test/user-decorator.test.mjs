@@ -42,6 +42,8 @@ Module({
     {
       provide: UserUseCase,
       useValue: new UserUseCase({
+        async execute() { throw new Error("Authentication reads must not start a write transaction"); },
+      }, {
         async fetchUserById(id) {
           lookups.push(id);
           if (databaseError) throw databaseError;

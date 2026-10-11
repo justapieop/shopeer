@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "@shopeer/domain";
 import type { UserRepository } from "@shopeer/case";
 import { Check, Column, CreateDateColumn, Entity, Index, PrimaryColumn, Repository, Unique } from "typeorm";
+import { requireTransaction } from "../../../database/requireTransaction.js";
 
 @Entity({
   name: "users",
@@ -57,6 +58,7 @@ export class TypeOrmUserRepository implements UserRepository {
   }
 
   public async save(user: User): Promise<User> { 
+    requireTransaction(this.userRepository.manager);
     return toDomain(await this.userRepository.save(toEntity(user)));
   }
 }
