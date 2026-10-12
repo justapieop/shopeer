@@ -12,10 +12,11 @@ import {
   Category,
   OutOfStockError,
   Product,
+  Role,
   User,
   type Order,
 } from "@shopeer/domain";
-import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, RepositorySet, UnitOfWork, UserRepository } from "../src/ports.js";
+import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, RepositorySet, RoleRepository, UnitOfWork, UserRepository } from "../src/ports.js";
 
 export class SequentialIdGenerator implements IdGenerator {
   private next: number = 1;
@@ -56,6 +57,26 @@ export class InMemoryCategoryRepository implements CategoryRepository {
 
   public fetchAllCategories(): Category[] {
     return [...this.categories.values()];
+  }
+}
+
+export class InMemoryRoleRepository implements RoleRepository {
+  public readonly roles: Map<string, Role> = new Map();
+  /** userId → roleId, the in-memory counterpart of users.role_id. */
+  public readonly userRoles: Map<string, string> = new Map();
+
+  public save(role: Role): Role {
+    this.roles.set(role.id, role);
+    return role;
+  }
+
+  public fetchRoleById(roleId: string): Role | null {
+    return this.roles.get(roleId) ?? null;
+  }
+
+  public fetchRoleByUserId(userId: string): Role | null {
+    const roleId: string | undefined = this.userRoles.get(userId);
+    return roleId === undefined ? null : this.fetchRoleById(roleId);
   }
 }
 
@@ -206,6 +227,7 @@ export class InMemoryUnitOfWork implements UnitOfWork {
     private readonly orders: InMemoryOrderRepository,
     private readonly users: InMemoryUserRepository = new InMemoryUserRepository(),
     private readonly categories: InMemoryCategoryRepository = new InMemoryCategoryRepository(),
+    private readonly roles: InMemoryRoleRepository = new InMemoryRoleRepository(),
   ) {}
 
   public async execute<T>(work: (repositories: RepositorySet) => Promise<T>): Promise<T> {
@@ -224,12 +246,14 @@ export class InMemoryUnitOfWork implements UnitOfWork {
       restore(this.carts.carts), restore(this.cartItems.items),
       restore(this.products.products), restore(this.orders.orders),
       restore(this.users.users), restore(this.categories.categories),
+      restore(this.roles.roles), restore(this.roles.userRoles),
     ];
     try {
       return await work({
         carts: this.carts, cartItems: this.cartItems,
         products: this.products, orders: this.orders,
         users: this.users, categories: this.categories,
+        roles: this.roles,
       });
     } catch (error) {
       snapshots.forEach((reset) => reset());

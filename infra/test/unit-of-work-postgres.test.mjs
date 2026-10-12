@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { DataSource } from "typeorm";
 import { CartUseCase, OrderUseCase, UserUseCase } from "@shopeer/case";
-import { CartChangedError, OutOfStockError } from "@shopeer/domain";
+import { CartChangedError, OutOfStockError, Permission, Role } from "@shopeer/domain";
 import { TypeOrmUnitOfWork } from "../dist/database/TypeOrmUnitOfWork.js";
 import { CartEntity } from "../dist/nest/modules/cart/Cart.repository.js";
 import { CartItemEntity } from "../dist/nest/modules/cart/CartItem.repository.js";
@@ -12,9 +12,11 @@ import { ProductEntity } from "../dist/nest/modules/product/Product.repository.j
 import { CategoryEntity } from "../dist/nest/modules/product/Category.repository.js";
 import { UserEntity, TypeOrmUserRepository } from "../dist/nest/modules/user/User.repository.js";
 import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "../dist/nest/modules/order/Order.repository.js";
+import { RoleEntity, TypeOrmRoleRepository } from "../dist/nest/modules/role/Role.repository.js";
 import { Init1789712564933 } from "../dist/nest/modules/app/migrations/1789712564933-init.js";
 import { CartAndOrder1790475374461 } from "../dist/nest/modules/app/migrations/1790475374461-cart-and-order.js";
 import { OrderCartId1791680000000 } from "../dist/nest/modules/app/migrations/1791680000000-order-cart-id.js";
+import { Roles1791786448696 } from "../dist/nest/modules/app/migrations/1791786448696-roles.js";
 
 // Explicit opt-in. Each run owns a unique schema; existing tables are untouched.
 const databaseUrl = process.env.UOW_TEST_DATABASE_URL;
@@ -37,8 +39,8 @@ describe("Unit of Work with PostgreSQL", {
     database = new DataSource({
       type: "postgres", url: databaseUrl, schema,
       extra: { options: `-c search_path=${schema},public`, max: 8 },
-      entities: [CartEntity, CartItemEntity, ProductEntity, CategoryEntity, UserEntity, OrderEntity, OrderItemEntity],
-      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000],
+      entities: [CartEntity, CartItemEntity, ProductEntity, CategoryEntity, UserEntity, OrderEntity, OrderItemEntity, RoleEntity],
+      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696],
     });
     await database.initialize();
     await database.runMigrations();
@@ -196,5 +198,35 @@ describe("Unit of Work with PostgreSQL", {
     });
     const order = await database.getRepository(OrderEntity).findOneByOrFail({ id: "old-order" });
     assert.equal(order.cartId, "cart-alice");
+  });
+
+  it("gives existing and new users the member role by default", async () => {
+    const roles = new TypeOrmRoleRepository(database.getRepository(RoleEntity));
+    const role = await roles.fetchRoleByUserId("alice");
+    assert.equal(role.id, "member");
+    assert.equal(role.getPermissionBits(), 6n);
+    assert.equal(role.hasPermission(Permission.Buy), true);
+    assert.equal(await roles.fetchRoleByUserId("nobody"), null);
+  });
+
+  it("stores a role's permission bits and reads them back as a bigint", async () => {
+    await unitOfWork.execute(async ({ roles }) => {
+      await roles.save(new Role({ id: "auditor", name: "Kiểm toán", permission: 168n }));
+    });
+    try {
+      const role = await new TypeOrmRoleRepository(database.getRepository(RoleEntity)).fetchRoleById("auditor");
+      assert.equal(role.getPermissionBits(), 168n);
+      assert.equal(role.hasPermission(Permission.ViewAnyOrder), true);
+    } finally {
+      await database.query(`DELETE FROM "roles" WHERE "id" = 'auditor'`);
+    }
+  });
+
+  it("seeds the seven preset roles", async () => {
+    const stored = await database.getRepository(RoleEntity).find({ order: { id: "ASC" } });
+    assert.deepEqual(stored.map((role) => [role.id, role.permission]), [
+      ["admin", 510n], ["member", 6n], ["no_buy", 4n], ["no_sell", 2n],
+      ["order_handler", 238n], ["owner", 1n], ["support", 174n],
+    ]);
   });
 });

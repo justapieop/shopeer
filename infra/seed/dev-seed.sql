@@ -1,7 +1,8 @@
 -- Sample data for local development and demos.
 -- Loaded by `pnpm db:seed` (infra/src/database/seed.ts), which starts the
 -- database and runs the migrations first, so the tables always exist.
--- Safe to run again: it resets these products (including their stock).
+-- Safe to run again: it resets these products (including their stock) and
+-- the owner account.
 
 BEGIN;
 
@@ -25,5 +26,15 @@ ON CONFLICT ("id") DO UPDATE SET
     "category_id" = EXCLUDED."category_id",
     "stock"       = EXCLUDED."stock",
     "image_url"   = EXCLUDED."image_url";
+
+-- System owner (Super) for trying admin features locally.
+-- Log in with username `owner` and password `Owner@12345`. Development only.
+-- Running the seed again restores this password and role.
+INSERT INTO "users" ("id", "username", "hashed_password", "created_at", "suspended", "role_id") VALUES
+    ('user-owner', 'owner', '$argon2id$v=19$m=20480,t=3,p=2$Z0DqiXUFdkqmo+sDUoREZA$Fh3NklaeRi/A90cvf/iKImzOdbs8unw3TgXl+74gYK8', now(), false, 'owner')
+ON CONFLICT ("username") DO UPDATE SET
+    "hashed_password" = EXCLUDED."hashed_password",
+    "suspended"       = EXCLUDED."suspended",
+    "role_id"         = EXCLUDED."role_id";
 
 COMMIT;
