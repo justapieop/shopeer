@@ -18,6 +18,8 @@ export class CategoryEntity {
 
 @Injectable()
 export class TypeOrmCategoryRepository implements CategoryRepository {
+  public onSaved?: () => void;
+
   public constructor(
     @InjectRepository(CategoryEntity)
     private readonly categoryRepository: Repository<CategoryEntity>,
@@ -25,7 +27,9 @@ export class TypeOrmCategoryRepository implements CategoryRepository {
 
   public async save(category: Category): Promise<Category> {
     requireTransaction(this.categoryRepository.manager);
-    return toDomain(await this.categoryRepository.save(toEntity(category)));
+    const entity: CategoryEntity = await this.categoryRepository.save(toEntity(category));
+    this.onSaved?.();
+    return toDomain(entity);
   }
 
   public async fetchCategoryById(categoryId: string): Promise<Category | null> {

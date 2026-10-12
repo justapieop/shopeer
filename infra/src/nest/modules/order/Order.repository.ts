@@ -64,6 +64,8 @@ export class OrderItemEntity {
 
 @Injectable()
 export class TypeOrmOrderRepository implements OrderRepository {
+  public onProductsChanged?: () => void;
+
   public constructor(
     @InjectRepository(OrderEntity)
     private readonly orderRepository: Repository<OrderEntity>,
@@ -119,6 +121,7 @@ export class TypeOrmOrderRepository implements OrderRepository {
       productId: In(items.map((item: OrderItem) => item.productId)),
     });
     await manager.update(CartEntity, { id: cartId }, { updatedAt: new Date() });
+    this.onProductsChanged?.();
   }
 
   public async fetchOrderById(orderId: string): Promise<Order | null> {

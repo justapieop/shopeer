@@ -34,6 +34,9 @@ export class ProductEntity {
 
 @Injectable()
 export class TypeOrmProductRepository implements ProductRepository {
+  /** Set by the unit of work to invalidate catalog reads after commit. */
+  public onSaved?: () => void;
+
   public constructor(
     @InjectRepository(ProductEntity)
     private readonly productRepository: Repository<ProductEntity>,
@@ -41,7 +44,9 @@ export class TypeOrmProductRepository implements ProductRepository {
 
   public async save(product: Product): Promise<Product> {
     requireTransaction(this.productRepository.manager);
-    return toDomain(await this.productRepository.save(toEntity(product)));
+    const entity: ProductEntity = await this.productRepository.save(toEntity(product));
+    this.onSaved?.();
+    return toDomain(entity);
   }
 
   public async fetchProductById(productId: string): Promise<Product | null> {

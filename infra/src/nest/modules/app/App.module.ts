@@ -9,6 +9,7 @@ import { CacheModule } from "@nestjs/cache-manager";
 import { ProductModule } from "../product/Product.module.js";
 import { CartModule } from "../cart/Cart.module.js";
 import { OrderModule } from "../order/Order.module.js";
+import { InMemoryCacheModule } from "../../common/cache/InMemoryCache.module.js";
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { OrderModule } from "../order/Order.module.js";
     CacheModule.register({
       isGlobal: true,
     }),
+    InMemoryCacheModule,
     LoggerModule.forRootAsync({
       imports: [
         ConfigModule,
