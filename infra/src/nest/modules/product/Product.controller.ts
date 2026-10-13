@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
+import { Controller, Get, Inject, Param, Post, Query } from "@nestjs/common";
 import { ProductUseCase } from "@shopeer/case";
 import type { Category, Product } from "@shopeer/domain";
 import { CategoryResponseDto, ProductResponseDto } from "./Product.dto.js";
@@ -20,6 +20,11 @@ export class ProductController {
   @Get("/:productId")
   public async getProduct(@Param("productId") productId: string): Promise<ProductResponseDto> {
     return ProductResponseDto.from(await this.productUseCase.getProduct(productId));
+  }
+
+  @Post("/create")
+  public async createProduct(): Promise<void> {
+
   }
 }
 

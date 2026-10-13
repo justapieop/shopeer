@@ -32,6 +32,9 @@ export class OrderEntity {
   @Column({ type: "text", name: "user_id" })
   public readonly userId!: string;
 
+  @Column({ type: "text", name: "cart_id" })
+  public readonly cartId!: string;
+
   @Column({ type: "bigint", name: "total_amount", transformer: bigintToNumber })
   public readonly totalAmount!: number;
 
@@ -205,6 +208,7 @@ function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
     orderId: entity.id,
     userId: entity.userId,
     createdAt: entity.createdAt,
+    cartId: entity.cartId,
     status: "completed",
     items: items.map(
       (item: OrderItemEntity) =>
