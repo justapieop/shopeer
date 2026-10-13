@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
+import { Controller, Get, Inject, Param, Post, Query } from "@nestjs/common";
 import { ProductUseCase } from "@shopeer/case";
 import type { Category, Product } from "@shopeer/domain";
 import { InMemoryCacheManager } from "../../common/cache/InMemoryCacheManager.js";
@@ -39,6 +39,11 @@ export class ProductController {
     return this.cacheManager.getOrLoad("catalog:products", `id:${productId}`, async () =>
       ProductResponseDto.from(await this.productUseCase.getProduct(productId)),
     );
+  }
+
+  @Post("/create")
+  public async createProduct(): Promise<void> {
+
   }
 }
 

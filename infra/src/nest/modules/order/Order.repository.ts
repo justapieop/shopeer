@@ -199,6 +199,7 @@ function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
     cartId: entity.cartId,
     userId: entity.userId,
     createdAt: entity.createdAt,
+    cartId: entity.cartId,
     status: "completed",
     items: items.map(
       (item: OrderItemEntity) =>
