@@ -31,7 +31,9 @@ export class CartAndOrder1790475374461 implements MigrationInterface {
                 "image_url"   text NOT NULL
             )
         `);
-        await queryRunner.query(`CREATE INDEX "IDX_products_category_id" ON "products" ("category_id")`);
+        await queryRunner.query(
+            `CREATE INDEX "IDX_products_category_id" ON "products" ("category_id")`,
+        );
 
         await queryRunner.query(`
             CREATE TABLE "carts" (
@@ -51,7 +53,9 @@ export class CartAndOrder1790475374461 implements MigrationInterface {
                 CONSTRAINT "UQ_cart_items_cart_product" UNIQUE ("cart_id", "product_id")
             )
         `);
-        await queryRunner.query(`CREATE INDEX "IDX_cart_items_product_id" ON "cart_items" ("product_id")`);
+        await queryRunner.query(
+            `CREATE INDEX "IDX_cart_items_product_id" ON "cart_items" ("product_id")`,
+        );
 
         await queryRunner.query(`
             CREATE TABLE "orders" (
@@ -61,7 +65,9 @@ export class CartAndOrder1790475374461 implements MigrationInterface {
                 "created_at"   timestamptz NOT NULL DEFAULT now()
             )
         `);
-        await queryRunner.query(`CREATE INDEX "IDX_orders_user_id_created_at" ON "orders" ("user_id", "created_at" DESC)`);
+        await queryRunner.query(
+            `CREATE INDEX "IDX_orders_user_id_created_at" ON "orders" ("user_id", "created_at" DESC)`,
+        );
 
         await queryRunner.query(`
             CREATE TABLE "order_items" (
@@ -73,7 +79,9 @@ export class CartAndOrder1790475374461 implements MigrationInterface {
                 CONSTRAINT "UQ_order_items_order_product" UNIQUE ("order_id", "product_id")
             )
         `);
-        await queryRunner.query(`CREATE INDEX "IDX_order_items_product_id" ON "order_items" ("product_id")`);
+        await queryRunner.query(
+            `CREATE INDEX "IDX_order_items_product_id" ON "order_items" ("product_id")`,
+        );
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
