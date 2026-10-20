@@ -3,3 +3,5 @@ packages:
   - domain/
   - case/
   - infra/
+allowBuilds:
+  '@scarf/scarf': false

@@ -1,10 +1,13 @@
-import { Expose } from "class-transformer";
 import { IsAlphanumeric, IsStrongPassword } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { UserResponseDto } from "../user/User.dto.js";
 
 export class UserRegistrationDto {
+  @ApiProperty({ type: String, pattern: "^[A-Za-z0-9]+$", example: "alice", description: "Alphanumeric username." })
   @IsAlphanumeric()
   public readonly username!: string;
 
+  @ApiProperty({ type: String, format: "password", minLength: 10, writeOnly: true, example: "ExamplePass1!", description: "At least 10 characters, including a lowercase letter, uppercase letter, number, and symbol." })
   @IsStrongPassword({
     minLength: 10,
     minLowercase: 1,
@@ -15,16 +18,11 @@ export class UserRegistrationDto {
   public readonly password!: string;
 }
 
-export class UserRegisterResponseDto {
-  public readonly id!: string;
-  public readonly username!: string;
-
-  @Expose({ name: "created_at", })
-  public readonly createdAt!: Date;
-  public readonly suspended!: boolean;
-}
+export class UserRegisterResponseDto extends UserResponseDto { }
 
 export class UserLoginDto { 
+  @ApiProperty({ type: String, example: "alice" })
   public readonly username!: string;
+  @ApiProperty({ type: String, format: "password", writeOnly: true, example: "ExamplePass1!" })
   public readonly password!: string;
 }
