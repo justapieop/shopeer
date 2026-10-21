@@ -9,29 +9,26 @@ export class ProductController {
   public constructor(
     @Inject(ProductUseCase)
     private readonly productUseCase: ProductUseCase,
-    private readonly cacheManager: InMemoryCacheManager,
-  ) { }
+  ) {}
 
   /** GET /products or GET /products?categoryId=cat-books */
   @Get()
-  public async listProducts(@Query("categoryId") categoryId?: string): Promise<ProductResponseDto[]> {
-    const key: string = categoryId ? `category:${categoryId}` : "all";
-    return this.cacheManager.getOrLoad("catalog:products", key, async () => {
-      const products: Product[] = await this.productUseCase.listProducts(categoryId || undefined);
-      return products.map(ProductResponseDto.from);
-    });
+  public async listProducts(
+    @Query("categoryId") categoryId?: string,
+  ): Promise<ProductResponseDto[]> {
+    const products: Product[] = await this.productUseCase.listProducts(
+      categoryId || undefined,
+    );
+    return products.map(ProductResponseDto.from);
   }
 
   @Get("/:productId")
-  public async getProduct(@Param("productId") productId: string): Promise<ProductResponseDto> {
-    return this.cacheManager.getOrLoad("catalog:products", `id:${productId}`, async () =>
-      ProductResponseDto.from(await this.productUseCase.getProduct(productId)),
+  public async getProduct(
+    @Param("productId") productId: string,
+  ): Promise<ProductResponseDto> {
+    return ProductResponseDto.from(
+      await this.productUseCase.getProduct(productId),
     );
-  }
-
-  @Post("/create")
-  public async createProduct(): Promise<void> {
-
   }
 }
 
@@ -40,14 +37,20 @@ export class CategoryController {
   public constructor(
     @Inject(ProductUseCase)
     private readonly productUseCase: ProductUseCase,
+    @Inject(InMemoryCacheManager)
     private readonly cacheManager: InMemoryCacheManager,
-  ) { }
+  ) {}
 
   @Get()
   public async listCategories(): Promise<CategoryResponseDto[]> {
-    return this.cacheManager.getOrLoad("catalog:categories", "all", async () => {
-      const categories: Category[] = await this.productUseCase.listCategories();
-      return categories.map(CategoryResponseDto.from);
-    });
+    return this.cacheManager.getOrLoad(
+      "catalog:categories",
+      "all",
+      async () => {
+        const categories: Category[] =
+          await this.productUseCase.listCategories();
+        return categories.map(CategoryResponseDto.from);
+      },
+    );
   }
 }
