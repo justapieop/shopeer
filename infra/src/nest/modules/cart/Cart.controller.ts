@@ -3,13 +3,13 @@ import { CartUseCase } from "@shopeer/case";
 import type { User as DomainUser } from "@shopeer/domain";
 import { User as AuthenticatedUser } from "../../common/decorators/User.decorator.js";
 import { AddCartItemDto, CartResponseDto, UpdateCartItemDto } from "./Cart.dto.js";
-import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiCookieAuth, ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { ApiErrors } from "../../common/openapi/ApiErrors.js";
 
 /** Every route works on the cart of the current user. */
 @Controller("/cart")
 @ApiTags("Cart")
-@ApiBearerAuth("bearer")
+@ApiCookieAuth("cookie")
 @ApiErrors(
   { status: 401, description: "Missing, invalid, or expired JWT, or the token's user no longer exists." },
   { status: 403, description: "The authenticated user is suspended." },

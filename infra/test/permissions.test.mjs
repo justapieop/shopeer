@@ -8,6 +8,7 @@ import { AuthorizationUseCase, UserUseCase } from "@shopeer/case";
 import { Permission, Role, User } from "@shopeer/domain";
 import jwt from "jsonwebtoken";
 import request from "supertest";
+import cookieParser from "cookie-parser";
 import { RequirePermissions } from "../dist/nest/common/decorators/RequirePermissions.decorator.js";
 import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 import { PermissionsGuard } from "../dist/nest/common/guards/Permissions.guard.js";
@@ -34,9 +35,9 @@ RequirePermissions()(PublicController);
 
 describe("permission enforcement", () => {
   let app;
-  const get = (path = "/protected/buy", authorization = `Bearer ${jwt.sign({ sub: "user-id" }, secret)}`) => {
+  const get = (path = "/protected/buy", cookie = `access_token=${jwt.sign({ sub: "user-id" }, secret)}`) => {
     const response = request(app.getHttpServer()).get(path);
-    return authorization === null ? response : response.set("Authorization", authorization);
+    return cookie === null ? response : response.set("Cookie", cookie);
   };
 
   before(async () => {
@@ -61,6 +62,7 @@ describe("permission enforcement", () => {
       ],
     }).compile();
     app = module.createNestApplication({ logger: false });
+    app.use(cookieParser());
     await app.init();
   });
   after(async () => { await app?.close(); });
@@ -98,7 +100,7 @@ describe("permission enforcement", () => {
     await get().expect(403);
     assert.equal(calls, 0);
   });
-  for (const header of [null, "Basic abc", "Bearer invalid", `Bearer ${jwt.sign({ sub: "user-id" }, secret, { expiresIn: -1 })}`]) {
+  for (const header of [null, "access_token=", "access_token=invalid", `access_token=${jwt.sign({ sub: "user-id" }, secret, { expiresIn: -1 })}`]) {
     it(`rejects invalid authentication: ${header}`, async () => {
       await get("/protected/buy", header).expect(401);
       assert.equal(calls, 0);

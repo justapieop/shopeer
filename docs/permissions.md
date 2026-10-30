@@ -14,7 +14,7 @@ remove a controller requirement. With no requirements the guard permits access
 without authenticating; this decorator does not replace authentication on routes
 that only need a logged-in user.
 
-For a protected request the guard reuses the existing bearer-token parsing and
+For a protected request the guard reads the `access_token` cookie and reuses
 `UserPipe` authentication checks, then calls `AuthorizationUseCase`. The use case
 loads the user's current role and uses the domain's `Role.hasPermission()`;
 `Super` grants every permission. Permissions are read from the database on each

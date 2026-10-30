@@ -39,7 +39,7 @@ describe("OpenAPI documentation", () => {
         { provide: OrderUseCase, useValue: {} },
         { provide: ProductUseCase, useValue: {} },
         { provide: UserUseCase, useValue: { fetchUserById: async (id) => id === "user-1" ? storedUser : null } },
-        { provide: ConfigService, useValue: {} },
+        { provide: ConfigService, useValue: new ConfigService({ NODE_ENV: "test" }) },
         { provide: InMemoryCacheManager, useValue: {} },
       ],
     }).compile();
@@ -94,14 +94,16 @@ describe("OpenAPI documentation", () => {
     }
   });
 
-  it("declares bearer authentication on all eight protected operations only", () => {
-    assert.equal(document.components.securitySchemes.bearer.type, "http");
-    assert.equal(document.components.securitySchemes.bearer.scheme, "bearer");
+  it("declares cookie authentication on all eight protected operations only", () => {
+    assert.equal(document.components.securitySchemes.cookie.type, "apiKey");
+    assert.equal(document.components.securitySchemes.cookie.in, "cookie");
+    assert.equal(document.components.securitySchemes.cookie.name, "access_token");
+    assert.equal(document.components.securitySchemes.bearer, undefined);
     for (const [method, path] of routes) {
       const operation = document.paths[path][method];
       const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path === "/checkout";
       if (protectedRoute) {
-        assert.deepEqual(operation.security, [{ bearer: [] }]);
+        assert.deepEqual(operation.security, [{ cookie: [] }]);
         assert.ok(operation.responses["401"]);
         assert.ok(operation.responses["403"]);
       } else {

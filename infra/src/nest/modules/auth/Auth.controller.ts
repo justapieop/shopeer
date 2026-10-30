@@ -5,6 +5,8 @@ import { AuthService } from "./Auth.service.js";
 import { type Response } from "express";
 import { ApiBody, ApiCreatedResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { ApiErrors } from "../../common/openapi/ApiErrors.js";
+import { ConfigService } from "@nestjs/config";
+import { ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_TTL_SECONDS } from "../../common/auth-cookie.js";
 
 @Controller("/auth")
 @ApiTags("Authentication")
@@ -13,6 +15,8 @@ export class AuthController {
   public constructor(
     @Inject(AuthService)
     private readonly authService: AuthService,
+    @Inject(ConfigService)
+    private readonly configService: ConfigService,
   ) { }
 
   @Post("/register")
@@ -36,12 +40,12 @@ export class AuthController {
   }
 
   @Post("/login")
-  @ApiOperation({ summary: "Log in", description: "Verifies credentials and sets the access_token cookie. Protected routes currently require the JWT in the Authorization: Bearer header; the cookie alone is not accepted." })
+  @ApiOperation({ summary: "Log in", description: "Verifies credentials and sets the HttpOnly access_token cookie used by protected routes. The token is not returned in JSON." })
   @ApiBody({ type: UserLoginDto })
   @ApiCreatedResponse({
     type: UserRegisterResponseDto,
     description: "The authenticated user. The current login endpoint responds with HTTP 201.",
-    headers: { "Set-Cookie": { description: "Contains the signed JWT in the access_token cookie.", schema: { type: "string", example: "access_token=<JWT>; Path=/" } } },
+    headers: { "Set-Cookie": { description: "JWT cookie lasting one hour; Secure in production.", schema: { type: "string", example: "access_token=<JWT>; Max-Age=3600; Path=/; HttpOnly; SameSite=Strict" } } },
   })
   @ApiErrors({ status: 400, description: "The username or password is invalid." })
   public async login(@Body() data: UserLoginDto, @Res({ passthrough: true }) res: Response): Promise<UserRegisterResponseDto> { 
@@ -53,7 +57,13 @@ export class AuthController {
 
     const token: string = this.authService.signToken(user);
 
-    res.cookie("access_token", token);
+    res.cookie(ACCESS_TOKEN_COOKIE, token, {
+      httpOnly: true,
+      secure: this.configService.get<string>("NODE_ENV") === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: ACCESS_TOKEN_TTL_SECONDS * 1000,
+    });
 
     return {
       id: user.id,

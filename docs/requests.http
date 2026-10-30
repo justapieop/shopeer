@@ -13,9 +13,8 @@
 @username = shopeeruser
 @password = Abcdef@12345
 
-# Filled in once "Log in" has been sent. Temporary identity header, see
-# infra/src/nest/common/decorators/CurrentUserId.decorator.ts
-@userId = {{login.response.body.id}}
+# Login sets the access_token cookie. Enable REST Client's rememberCookiesForSubsequentRequests
+# setting (the default) so subsequent requests send it automatically.
 @orderId = {{checkout.response.body.orderId}}
 
 ### ============== 1. ACCOUNT ==============
@@ -61,12 +60,10 @@ GET {{baseUrl}}/products/does-not-exist
 
 ### View my cart (created empty on first call)
 GET {{baseUrl}}/cart
-X-User-Id: {{userId}}
 
 ### Add 2 T-shirts
 POST {{baseUrl}}/cart/items
 Content-Type: application/json
-X-User-Id: {{userId}}
 
 {
   "productId": "prod-tshirt",
@@ -76,7 +73,6 @@ X-User-Id: {{userId}}
 ### Add 1 more T-shirt -> quantities add up to 3
 POST {{baseUrl}}/cart/items
 Content-Type: application/json
-X-User-Id: {{userId}}
 
 {
   "productId": "prod-tshirt",
@@ -86,7 +82,6 @@ X-User-Id: {{userId}}
 ### Add the last book in stock
 POST {{baseUrl}}/cart/items
 Content-Type: application/json
-X-User-Id: {{userId}}
 
 {
   "productId": "prod-last-one",
@@ -96,7 +91,6 @@ X-User-Id: {{userId}}
 ### Change the T-shirt quantity to 5
 PATCH {{baseUrl}}/cart/items/prod-tshirt
 Content-Type: application/json
-X-User-Id: {{userId}}
 
 {
   "quantity": 5
@@ -105,7 +99,6 @@ X-User-Id: {{userId}}
 ### Invalid quantity -> 400 (expected)
 POST {{baseUrl}}/cart/items
 Content-Type: application/json
-X-User-Id: {{userId}}
 
 {
   "productId": "prod-tshirt",
@@ -115,42 +108,35 @@ X-User-Id: {{userId}}
 ### More than the stock -> 409 OutOfStockError (expected)
 POST {{baseUrl}}/cart/items
 Content-Type: application/json
-X-User-Id: {{userId}}
 
 {
   "productId": "prod-tshirt",
   "quantity": 1000
 }
 
-### Missing X-User-Id header -> 401 (expected)
+### Missing cookie -> 401 (clear the REST Client cookie jar before this request)
 GET {{baseUrl}}/cart
 
 ### Remove the book from the cart (optional; skip it to buy the book)
 DELETE {{baseUrl}}/cart/items/prod-last-one
-X-User-Id: {{userId}}
 
 ### Empty the whole cart (optional)
 DELETE {{baseUrl}}/cart
-X-User-Id: {{userId}}
 
 ### ============== 4. CHECKOUT & ORDERS ==============
 
 ### Checkout the whole cart -> 201 + the order (409 if the cart is empty)
 # @name checkout
 POST {{baseUrl}}/checkout
-X-User-Id: {{userId}}
 
 ### Cart is empty after checkout
 GET {{baseUrl}}/cart
-X-User-Id: {{userId}}
 
 ### Stock went down (the last book now shows stock 0)
 GET {{baseUrl}}/products/prod-last-one
 
 ### My orders, newest first
 GET {{baseUrl}}/orders
-X-User-Id: {{userId}}
 
 ### One order (the one created by "Checkout" above)
 GET {{baseUrl}}/orders/{{orderId}}
-X-User-Id: {{userId}}

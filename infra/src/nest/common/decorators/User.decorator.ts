@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { UserUseCase } from "@shopeer/case";
 import type { User as DomainUser } from "@shopeer/domain";
 import jwt from "jsonwebtoken";
+import { ACCESS_TOKEN_COOKIE } from "../auth-cookie.js";
 
 interface UserLookup {
   token: string;
@@ -48,19 +49,17 @@ export class UserPipe implements PipeTransform<UserLookup, Promise<DomainUser>> 
 }
 
 export function getUserLookup(request: Request, options: UserOptions = defaultUserFetchOptions): UserLookup {
-  const tokenHeader: string | undefined = request.headers.authorization;
+  const token: unknown = request.cookies?.[ACCESS_TOKEN_COOKIE];
 
-  if (!tokenHeader) {
+  if (token === undefined) {
     throw new UnauthorizedException("Missing access token");
   }
 
-  const match: RegExpExecArray | null = /^Bearer ([^\s]+)$/i.exec(tokenHeader);
-
-  if (!match?.[1]) {
-    throw new UnauthorizedException("Invalid Authorization header");
+  if (typeof token !== "string" || !token.trim()) {
+    throw new UnauthorizedException("Invalid access token cookie");
   }
 
-  return { token: match[1], options };
+  return { token, options };
 }
 
 const userParameter = createParamDecorator((data: UserOptions, context: ExecutionContext): UserLookup =>
@@ -73,10 +72,8 @@ export function User(options: UserOptions = defaultUserFetchOptions): ParameterD
 
 export interface UserOptions {
   allowSuspended?: boolean,
-  permissons?: number,
 }
 
 export const defaultUserFetchOptions: UserOptions = {
   allowSuspended: false,
-  permissons: 0
 };

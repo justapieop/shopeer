@@ -4,12 +4,12 @@ import type { Order } from "@shopeer/domain";
 import type { User as DomainUser } from "@shopeer/domain";
 import { User as AuthenticatedUser } from "../../common/decorators/User.decorator.js";
 import { OrderResponseDto } from "./Order.dto.js";
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiCookieAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { ApiErrors } from "../../common/openapi/ApiErrors.js";
 
 @Controller()
 @ApiTags("Orders")
-@ApiBearerAuth("bearer")
+@ApiCookieAuth("cookie")
 @ApiErrors(
   { status: 401, description: "Missing, invalid, or expired JWT, or the token's user no longer exists." },
   { status: 403, description: "The authenticated user is suspended." },

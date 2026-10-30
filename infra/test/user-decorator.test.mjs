@@ -8,6 +8,7 @@ import { UserUseCase } from "@shopeer/case";
 import { User as DomainUser } from "@shopeer/domain";
 import jwt from "jsonwebtoken";
 import request from "supertest";
+import cookieParser from "cookie-parser";
 import { User } from "../dist/nest/common/decorators/User.decorator.js";
 
 const secret = "user-decorator-test-secret";
@@ -58,9 +59,9 @@ Module({
 describe("@User", () => {
   let app;
   const token = (payload = { sub: "user-id" }, options = {}) => jwt.sign(payload, secret, options);
-  const get = (authorization, path = "/current") => {
+  const get = (cookie, path = "/current") => {
     const response = request(app.getHttpServer()).get(path);
-    return authorization === undefined ? response : response.set("Authorization", authorization);
+    return cookie === undefined ? response : response.set("Cookie", cookie);
   };
 
   before(async () => {
@@ -69,6 +70,7 @@ describe("@User", () => {
       controllers: [TestController],
     }).compile();
     app = module.createNestApplication({ logger: false });
+    app.use(cookieParser());
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
   });
@@ -89,18 +91,18 @@ describe("@User", () => {
   });
 
   it("looks up the verified subject and passes the complete database user to the controller", async () => {
-    await get(`Bearer ${token({ sub: storedUser.id, username: "stale-token-name" })}`).expect(200);
+    await get(`access_token=${token({ sub: storedUser.id, username: "stale-token-name" })}`).expect(200);
     assert.deepEqual(lookups, [storedUser.id]);
     assert.equal(receivedUser, storedUser);
   });
 
-  it("accepts a case-insensitive Bearer scheme", async () => {
-    await get(`bearer ${token()}`).expect(200);
+  it("finds the access token among other cookies", async () => {
+    await get(`theme=dark; access_token=${token()}`).expect(200);
     assert.equal(receivedUser, storedUser);
   });
 
-  for (const header of [undefined, "Basic abc", "Bearer", "BearerX abc", "Bearer  abc", "Bearer abc extra"]) {
-    it(`rejects a missing or malformed header: ${header}`, async () => {
+  for (const header of [undefined, "theme=dark", "access_token=", "access_token=%20%20", "access_token=j:123", "access_token=j:%7B%7D"]) {
+    it(`rejects a missing or malformed cookie: ${header}`, async () => {
       await get(header).expect(401);
       assert.deepEqual(lookups, []);
       assert.equal(receivedUser, undefined);
@@ -120,33 +122,33 @@ describe("@User", () => {
     ["string payload", () => token("user-id")],
   ]) {
     it(`rejects a ${name} token before querying the database`, async () => {
-      await get(`Bearer ${makeToken()}`).expect(401);
+      await get(`access_token=${makeToken()}`).expect(401);
       assert.deepEqual(lookups, []);
       assert.equal(receivedUser, undefined);
     });
   }
 
   it("rejects a valid subject that has no database user", async () => {
-    await get(`Bearer ${token({ sub: "deleted-user" })}`).expect(401);
+    await get(`access_token=${token({ sub: "deleted-user" })}`).expect(401);
     assert.deepEqual(lookups, ["deleted-user"]);
     assert.equal(receivedUser, undefined);
   });
 
   it("rejects suspended users by default", async () => {
     storedUser = new DomainUser({ ...storedUser, suspended: true });
-    await get(`Bearer ${token()}`).expect(403);
+    await get(`access_token=${token()}`).expect(403);
     assert.equal(receivedUser, undefined);
   });
 
   it("returns suspended users when explicitly allowed", async () => {
     storedUser = new DomainUser({ ...storedUser, suspended: true });
-    await get(`Bearer ${token()}`, "/suspended").expect(200);
+    await get(`access_token=${token()}`, "/suspended").expect(200);
     assert.equal(receivedUser, storedUser);
   });
 
   it("preserves database failures as server errors", async () => {
     databaseError = new Error("Database unavailable");
-    await get(`Bearer ${token()}`).expect(500);
+    await get(`access_token=${token()}`).expect(500);
     assert.equal(receivedUser, undefined);
   });
 });

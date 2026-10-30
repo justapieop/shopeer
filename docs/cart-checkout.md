@@ -16,13 +16,13 @@ pnpm test                   # 40 unit test của tầng use case
 pnpm race                   # demo race condition: 20 người cùng mua 5 chiếc điện thoại
 ```
 
-> ⚠️ **Tạm thời**: các API giỏ hàng/đơn hàng nhận biết người dùng qua header `X-User-Id: <id user>`, là id trả về khi gọi `POST /auth/register`. Cách này **không an toàn** vì ai cũng gửi được id bất kỳ. Nó chỉ dùng để test trong lúc chờ guard JWT (phần của An). Khi guard xong, chỉ cần sửa một file: `infra/src/nest/common/decorators/CurrentUserId.decorator.ts`.
+> Authentication uses the HttpOnly access_token cookie set by POST /auth/login. Log in first and retain the cookie jar; the session lasts one hour.
 
 ---
 
 ## 2. Các API
 
-| Method | Đường dẫn | Cần `X-User-Id` | Mô tả | Lỗi có thể gặp |
+| Method | Đường dẫn | Cần cookie đăng nhập | Mô tả | Lỗi có thể gặp |
 |---|---|:-:|---|---|
 | GET | `/categories` | | Danh sách danh mục | |
 | GET | `/products?categoryId=…` | | Danh sách sản phẩm (lọc theo danh mục nếu có) | 404 danh mục không tồn tại |
@@ -42,10 +42,11 @@ Ví dụ:
 
 ```bash
 curl -X POST localhost:3000/auth/register -H "content-type: application/json" \
-     -d '{"username":"hai123","password":"Abcdef@12345"}'            # → lấy "id"
-curl -X POST localhost:3000/cart/items -H "content-type: application/json" \
-     -H "x-user-id: <id>" -d '{"productId":"prod-tshirt","quantity":2}'
-curl -X POST localhost:3000/checkout -H "x-user-id: <id>"
+     -d '{"username":"hai123","password":"Abcdef@12345"}'            # register first
+curl -c cookies.txt -X POST localhost:3000/auth/login -H "content-type: application/json" -d '{"username":"hai123","password":"Abcdef@12345"}'
+curl -b cookies.txt -X POST localhost:3000/cart/items -H "content-type: application/json" \
+     -d '{"productId":"prod-tshirt","quantity":2}'
+curl -b cookies.txt -X POST localhost:3000/checkout
 ```
 
 ---
@@ -97,7 +98,7 @@ sequenceDiagram
     participant R as Repositories<br/>(infra)
     participant DB as PostgreSQL
 
-    U->>C: POST /checkout (X-User-Id)
+    U->>C: POST /checkout (access_token cookie)
     C->>UC: checkout(userId)
     UC->>W: execute(callback)
     W->>DB: BEGIN
@@ -218,7 +219,7 @@ PASS  prod-clean-code stock dropped only for successful orders (failed orders ro
 
 ## 7. Giới hạn và việc còn lại
 
-- **Xác thực:** header `X-User-Id` là tạm thời, cần thay bằng guard JWT (An).
+- **Xác thực:** JWT trong cookie HttpOnly `access_token`; đăng nhập lại sau một giờ. Cookie dùng SameSite=Strict và Secure trong production.
 - **Thêm vào giỏ không giữ hàng:** kiểm tra tồn kho lúc thêm chỉ để báo sớm. Hàng chỉ thực sự bị trừ khi thanh toán (giống Shopee: "còn hàng" trong giỏ chưa chắc mua được).
 - **Giá:** đơn hàng lấy giá **tại thời điểm thanh toán** và lưu lại (`order_items.unit_price`). Đổi giá sau đó không ảnh hưởng đơn cũ.
 - **Chưa có thanh toán thật** (cổng thanh toán, trạng thái đơn, hủy đơn / hoàn kho).

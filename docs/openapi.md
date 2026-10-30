@@ -2,7 +2,7 @@
 
 Start the application with `pnpm start:dev`. At the configured `PORT` (3000 by default), documentation is available at:
 
-- `/docs` — Swagger UI, including request examples and the Authorize dialog.
+- `/docs` — Swagger UI, including request examples.
 - `/openapi.json` — generated OpenAPI JSON.
 - `/openapi.yaml` — generated OpenAPI YAML.
 
@@ -10,7 +10,18 @@ The specification is generated from controller and DTO decorators and covers all
 
 ## Authentication
 
-Cart and order operations require `Authorization: Bearer <JWT>`. Login sets an `access_token` cookie, but the current authentication decorator reads the bearer header only. Enter that JWT in Swagger UI's Authorize dialog to call protected operations. Login currently returns HTTP 201, including the public user and a `Set-Cookie` response header.
+Cart and order operations read the JWT only from the `access_token` cookie.
+Call `POST /auth/login` first; it returns HTTP 201 with the public user and sets
+an HttpOnly cookie lasting one hour, with `Path=/` and `SameSite=Strict`.
+Production cookies also require HTTPS (`Secure`). The token is not returned in
+JSON. Bearer headers and user-ID headers are unsupported.
+
+In Swagger UI, execute login on the same site before calling protected routes;
+the browser sends the cookie automatically. The Authorize dialog cannot set an
+HttpOnly cookie. Browser clients should send credentials with requests (for
+example, `credentials: "include"` with fetch); cross-site requests are blocked by
+the cookie's SameSite policy. Command-line clients can use curl's `-c` cookie jar
+on login and `-b` on subsequent requests. REST Client examples use its cookie jar.
 
 User, registration, and login responses contain only `id`, `username`, `createdAt`, and `suspended`. Password hashes and the domain object's `details` are excluded.
 
