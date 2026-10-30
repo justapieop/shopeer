@@ -16,6 +16,8 @@ import { UserModule } from "../dist/nest/modules/user/User.module.js";
 import { AuthModule } from "../dist/nest/modules/auth/Auth.module.js";
 import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 import { InMemoryCacheModule } from "../dist/nest/common/cache/InMemoryCache.module.js";
+import { PermissionsModule } from "../dist/nest/modules/permissions/Permissions.module.js";
+import { PermissionsGuard } from "../dist/nest/common/guards/Permissions.guard.js";
 
 it("feature modules expose use cases and authentication without exporting database adapters", () => {
   for (const [module, expected] of [
@@ -35,9 +37,10 @@ it("shares one Unit of Work provider across all application write use cases", as
   Global()(TestDatabaseModule);
   Module({ providers: [{ provide: DataSource, useValue: database }], exports: [DataSource] })(TestDatabaseModule);
   const module = await Test.createTestingModule({
-    imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }), CacheModule.register({ isGlobal: true }), InMemoryCacheModule, TestDatabaseModule, AuthModule, CartModule, ProductModule, OrderModule],
+    imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }), CacheModule.register({ isGlobal: true }), InMemoryCacheModule, TestDatabaseModule, AuthModule, CartModule, ProductModule, OrderModule, PermissionsModule],
   }).compile();
   try {
+    assert.ok(module.get(PermissionsGuard));
     const unitOfWork = module.get(TypeOrmUnitOfWork);
     for (const UseCase of [CartUseCase, CartItemUseCase, CategoryUseCase, OrderUseCase, UserUseCase]) {
       assert.equal(module.get(UseCase).unitOfWork, unitOfWork);

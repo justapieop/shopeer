@@ -47,9 +47,7 @@ export class UserPipe implements PipeTransform<UserLookup, Promise<DomainUser>> 
   }
 }
 
-const userParameter = createParamDecorator((data: UserOptions, context: ExecutionContext): UserLookup => {
-  const request: Request = context.switchToHttp().getRequest();
-
+export function getUserLookup(request: Request, options: UserOptions = defaultUserFetchOptions): UserLookup {
   const tokenHeader: string | undefined = request.headers.authorization;
 
   if (!tokenHeader) {
@@ -62,8 +60,12 @@ const userParameter = createParamDecorator((data: UserOptions, context: Executio
     throw new UnauthorizedException("Invalid Authorization header");
   }
 
-  return { token: match[1], options: data };
-});
+  return { token: match[1], options };
+}
+
+const userParameter = createParamDecorator((data: UserOptions, context: ExecutionContext): UserLookup =>
+  getUserLookup(context.switchToHttp().getRequest<Request>(), data),
+);
 
 export function User(options: UserOptions = defaultUserFetchOptions): ParameterDecorator {
   return userParameter(options, UserPipe);
