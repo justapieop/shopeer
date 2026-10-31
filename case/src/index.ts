@@ -1,4 +1,5 @@
 export * from "./ports.js";
+export * from "./pagination.js";
 export * from "./authorization.js";
 export * from "./user.js";
 export * from "./product.js";

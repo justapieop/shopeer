@@ -1,3 +1,4 @@
+import type { Pagination } from "./pagination.js";
 import type {
   Cart,
   CartItem,
@@ -72,7 +73,7 @@ export interface OrderRepository {
    */
   placeOrder(order: Order, cartId: string): void | Promise<void>;
   fetchOrderById(orderId: string): Order | null | Promise<Order | null>;
-  fetchOrdersByUserId(userId: string): Order[] | Promise<Order[]>;
+  fetchOrdersByUserId(userId: string, pagination: Pagination): Order[] | Promise<Order[]>;
 }
 
 /** Repositories share one transaction and must only be used within its callback. */
@@ -95,8 +96,8 @@ export interface ProductRepository {
   save(product: Product): Product | Promise<Product>;
   fetchProductById(productId: string): Product | null | Promise<Product | null>;
   fetchProductsByIds(productIds: string[]): Product[] | Promise<Product[]>;
-  fetchAllProducts(): Product[] | Promise<Product[]>;
-  fetchProductsByCategory(categoryId: string): Product[] | Promise<Product[]>;
+  fetchAllProducts(pagination: Pagination): Product[] | Promise<Product[]>;
+  fetchProductsByCategory(categoryId: string, pagination: Pagination): Product[] | Promise<Product[]>;
 }
 
 export interface RoleRepository {

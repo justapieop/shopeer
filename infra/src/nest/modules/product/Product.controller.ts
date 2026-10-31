@@ -5,6 +5,7 @@ import { InMemoryCacheManager } from "../../common/cache/InMemoryCacheManager.js
 import { CategoryResponseDto, ProductResponseDto } from "./Product.dto.js";
 import { ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { ApiErrors } from "../../common/openapi/ApiErrors.js";
+import { PaginationQueryDto } from "../../common/Pagination.dto.js";
 
 @Controller("/products")
 @ApiTags("Products")
@@ -18,14 +19,15 @@ export class ProductController {
 
   /** GET /products or GET /products?categoryId=cat-books */
   @Get()
-  @ApiOperation({ summary: "List products", description: "Returns products sorted by name, optionally filtered by category." })
+  @ApiOperation({ summary: "List products", description: "Returns a page of products sorted by name then ID, optionally filtered by category. Defaults to page 1 with 20 results; maximum limit is 100." })
   @ApiQuery({ name: "categoryId", required: false, type: String, description: "Category ID; omit to list every product.", example: "category-1" })
   @ApiOkResponse({ type: [ProductResponseDto] })
   @ApiErrors({ status: 404, description: "The requested category does not exist." })
-  public async listProducts(@Query("categoryId") categoryId?: string): Promise<ProductResponseDto[]> {
-    const key: string = categoryId ? `category:${categoryId}` : "all";
+  @ApiErrors({ status: 400, description: "Invalid pagination parameters." })
+  public async listProducts(@Query() pagination: PaginationQueryDto, @Query("categoryId") categoryId?: string): Promise<ProductResponseDto[]> {
+    const key: string = JSON.stringify([categoryId || null, pagination.page, pagination.limit]);
     return this.cacheManager.getOrLoad("catalog:products", key, async () => {
-      const products: Product[] = await this.productUseCase.listProducts(categoryId || undefined);
+      const products: Product[] = await this.productUseCase.listProducts(categoryId || undefined, pagination);
       return products.map(ProductResponseDto.from);
     });
   }

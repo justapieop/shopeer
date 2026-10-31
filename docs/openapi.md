@@ -27,6 +27,19 @@ User, registration, and login responses contain only `id`, `username`, `createdA
 
 ## Data and errors
 
+`GET /products` and `GET /orders` accept `page` (default 1) and `limit`
+(default 20, maximum 100). Both must be positive integers. Invalid values return
+HTTP 400. Responses remain JSON arrays; a page past the end returns `[]`.
+For example: `/products?categoryId=books&page=2&limit=10` or `/orders?page=2&limit=10`.
+Products sort by name then ID ascending; orders sort by creation time then ID
+descending. Offset pages reflect current data, so inserts between requests can
+shift the results.
+
+Login requires string credentials containing at least one non-whitespace character.
+The username is limited to 256 characters and the password to 1024. Invalid input
+returns HTTP 400 before credential lookup. Passwords are used exactly as supplied;
+login does not impose registration's password-strength rules.
+
 Prices, subtotals, and totals are integer VND amounts. Dates use ISO 8601 strings in the camelCase `createdAt` field. Cart quantity inputs must be positive integers. Adding to a cart checks stock without reserving it; checkout reserves stock inside a transaction.
 
 Errors contain `statusCode`, `error`, and `message`. Validation can return an array of messages. Stock conflicts additionally contain `productIds`. Route documentation lists the applicable HTTP status codes, including 401/403 for protected routes and 409 for cart or stock conflicts.

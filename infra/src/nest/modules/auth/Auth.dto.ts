@@ -1,4 +1,4 @@
-import { IsAlphanumeric, IsStrongPassword } from "class-validator";
+import { IsAlphanumeric, IsStrongPassword, IsString, Matches, MaxLength } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { UserResponseDto } from "../user/User.dto.js";
 
@@ -21,8 +21,14 @@ export class UserRegistrationDto {
 export class UserRegisterResponseDto extends UserResponseDto { }
 
 export class UserLoginDto { 
-  @ApiProperty({ type: String, example: "alice" })
+  @ApiProperty({ type: String, minLength: 1, maxLength: 256, pattern: "\\S", example: "alice" })
+  @IsString()
+  @Matches(/\S/, { message: "username must not be blank" })
+  @MaxLength(256)
   public readonly username!: string;
-  @ApiProperty({ type: String, format: "password", writeOnly: true, example: "ExamplePass1!" })
+  @ApiProperty({ type: String, format: "password", minLength: 1, maxLength: 1024, pattern: "\\S", writeOnly: true, example: "ExamplePass1!" })
+  @IsString()
+  @Matches(/\S/, { message: "password must not be blank" })
+  @MaxLength(1024)
   public readonly password!: string;
 }

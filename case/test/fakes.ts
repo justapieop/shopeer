@@ -17,6 +17,7 @@ import {
   type Order,
 } from "@shopeer/domain";
 import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, RepositorySet, RoleRepository, UnitOfWork, UserRepository } from "../src/ports.js";
+import { paginationOffset, type Pagination } from "../src/pagination.js";
 
 export class SequentialIdGenerator implements IdGenerator {
   private next: number = 1;
@@ -98,12 +99,18 @@ export class InMemoryProductRepository implements ProductRepository {
       .filter((product: Product | undefined): product is Product => product !== undefined);
   }
 
-  public fetchAllProducts(): Product[] {
-    return [...this.products.values()];
+  public fetchAllProducts(pagination: Pagination): Product[] {
+    const offset = paginationOffset(pagination);
+    return [...this.products.values()]
+      .sort((a, b) => a.name.localeCompare(b.name) || a.productId.localeCompare(b.productId))
+      .slice(offset, offset + pagination.limit);
   }
 
-  public fetchProductsByCategory(categoryId: string): Product[] {
-    return [...this.products.values()].filter((product: Product) => product.categoryId === categoryId);
+  public fetchProductsByCategory(categoryId: string, pagination: Pagination): Product[] {
+    const offset = paginationOffset(pagination);
+    return [...this.products.values()].filter((product: Product) => product.categoryId === categoryId)
+      .sort((a, b) => a.name.localeCompare(b.name) || a.productId.localeCompare(b.productId))
+      .slice(offset, offset + pagination.limit);
   }
 }
 
@@ -211,8 +218,11 @@ export class InMemoryOrderRepository implements OrderRepository {
     return this.orders.get(orderId) ?? null;
   }
 
-  public fetchOrdersByUserId(userId: string): Order[] {
-    return [...this.orders.values()].filter((order: Order) => order.userId === userId);
+  public fetchOrdersByUserId(userId: string, pagination: Pagination): Order[] {
+    const offset = paginationOffset(pagination);
+    return [...this.orders.values()].filter((order: Order) => order.userId === userId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.orderId.localeCompare(a.orderId))
+      .slice(offset, offset + pagination.limit);
   }
 }
 

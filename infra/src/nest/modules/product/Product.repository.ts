@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Product } from "@shopeer/domain";
 import type { ProductRepository } from "@shopeer/case";
+import { paginationOffset, type Pagination } from "@shopeer/case";
 import { Column, Entity, In, PrimaryColumn, Repository } from "typeorm";
 import { bigintToNumber } from "../../common/transformers.js";
 import { requireTransaction } from "../../../database/requireTransaction.js";
@@ -63,15 +64,17 @@ export class TypeOrmProductRepository implements ProductRepository {
     return entities.map(toDomain);
   }
 
-  public async fetchAllProducts(): Promise<Product[]> {
-    const entities: ProductEntity[] = await this.productRepository.find({ order: { name: "ASC", }, });
+  public async fetchAllProducts(pagination: Pagination): Promise<Product[]> {
+    const entities: ProductEntity[] = await this.productRepository.find({ order: { name: "ASC", id: "ASC" }, skip: paginationOffset(pagination), take: pagination.limit });
     return entities.map(toDomain);
   }
 
-  public async fetchProductsByCategory(categoryId: string): Promise<Product[]> {
+  public async fetchProductsByCategory(categoryId: string, pagination: Pagination): Promise<Product[]> {
     const entities: ProductEntity[] = await this.productRepository.find({
       where: { categoryId, },
-      order: { name: "ASC", },
+      order: { name: "ASC", id: "ASC" },
+      skip: paginationOffset(pagination),
+      take: pagination.limit,
     });
     return entities.map(toDomain);
   }

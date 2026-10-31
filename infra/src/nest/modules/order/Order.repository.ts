@@ -7,6 +7,7 @@ import {
   OutOfStockError,
 } from "@shopeer/domain";
 import type { OrderRepository } from "@shopeer/case";
+import { paginationOffset, type Pagination } from "@shopeer/case";
 import {
   Column,
   Entity,
@@ -141,10 +142,12 @@ export class TypeOrmOrderRepository implements OrderRepository {
     return toDomain(entity, items);
   }
 
-  public async fetchOrdersByUserId(userId: string): Promise<Order[]> {
+  public async fetchOrdersByUserId(userId: string, pagination: Pagination): Promise<Order[]> {
     const entities: OrderEntity[] = await this.orderRepository.find({
       where: { userId },
-      order: { createdAt: "DESC" },
+      order: { createdAt: "DESC", id: "DESC" },
+      skip: paginationOffset(pagination),
+      take: pagination.limit,
     });
 
     if (entities.length === 0) {
@@ -156,12 +159,13 @@ export class TypeOrmOrderRepository implements OrderRepository {
       order: { productId: "ASC" },
     });
 
-    return entities.map((entity: OrderEntity) =>
-      toDomain(
-        entity,
-        items.filter((item: OrderItemEntity) => item.orderId === entity.id),
-      ),
-    );
+    const itemsByOrder = new Map<string, OrderItemEntity[]>();
+    for (const item of items) {
+      const group = itemsByOrder.get(item.orderId) ?? [];
+      group.push(item);
+      itemsByOrder.set(item.orderId, group);
+    }
+    return entities.map((entity) => toDomain(entity, itemsByOrder.get(entity.id) ?? []));
   }
 }
 

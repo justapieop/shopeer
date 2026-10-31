@@ -14,6 +14,7 @@ import type {
   RepositorySet,
   UnitOfWork,
 } from "./ports.js";
+import { paginationOffset, type Pagination } from "./pagination.js";
 
 export class OrderUseCase {
   public constructor(
@@ -107,8 +108,9 @@ export class OrderUseCase {
   }
 
   /** The user's orders, newest first. */
-  public async listOrders(userId: string): Promise<Order[]> {
-    return await this.orderRepository.fetchOrdersByUserId(userId);
+  public async listOrders(userId: string, pagination: Pagination = { page: 1, limit: 20 }): Promise<Order[]> {
+    paginationOffset(pagination);
+    return await this.orderRepository.fetchOrdersByUserId(userId, pagination);
   }
 
   public async getOrder(userId: string, orderId: string): Promise<Order> {
