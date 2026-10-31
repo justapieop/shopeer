@@ -1,9 +1,17 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { User } from "@shopeer/domain";
+import { User, UsernameAlreadyExistsError } from "@shopeer/domain";
 import type { UserRepository } from "@shopeer/case";
-import { Check, Column, CreateDateColumn, Entity, Index, PrimaryColumn, Repository, Unique } from "typeorm";
+import { Check, Column, CreateDateColumn, DefaultNamingStrategy, Entity, Index, PrimaryColumn, QueryFailedError, Repository, Unique } from "typeorm";
 import { requireTransaction } from "../../../database/requireTransaction.js";
+
+// The initial migration creates both a unique constraint and a unique index.
+// Either can report the violation; preserve their existing generated names.
+const naming = new DefaultNamingStrategy();
+const usernameConstraints = new Set([
+  naming.uniqueConstraintName("users", ["username"]),
+  naming.indexName("users", ["username"]),
+]);
 
 @Entity({
   name: "users",
@@ -36,6 +44,22 @@ export class TypeOrmUserRepository implements UserRepository {
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
   ) { }
+
+  public async create(user: User): Promise<User> {
+    requireTransaction(this.userRepository.manager);
+    try {
+      await this.userRepository.insert(toEntity(user));
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        const driverError = error.driverError as { code?: string; constraint?: string };
+        if (driverError.code === "23505" && usernameConstraints.has(driverError.constraint ?? "")) {
+          throw new UsernameAlreadyExistsError(user.username);
+        }
+      }
+      throw error;
+    }
+    return user;
+  }
 
   public async fetchUserById(id: string): Promise<User | null> {
     const entity: UserEntity | null = await this.userRepository.findOneBy({ id, });

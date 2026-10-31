@@ -14,6 +14,8 @@ import {
   Product,
   Role,
   User,
+  UsernameAlreadyExistsError,
+  ConflictError,
   type Order,
 } from "@shopeer/domain";
 import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, RepositorySet, RoleRepository, UnitOfWork, UserRepository } from "../src/ports.js";
@@ -29,6 +31,12 @@ export class SequentialIdGenerator implements IdGenerator {
 
 export class InMemoryUserRepository implements UserRepository {
   public readonly users: Map<string, User> = new Map();
+
+  public create(user: User): User {
+    if (this.fetchUserByUsername(user.username)) throw new UsernameAlreadyExistsError(user.username);
+    if (this.users.has(user.id)) throw new ConflictError("User ID already exists");
+    return this.save(user);
+  }
 
   public save(user: User): User {
     this.users.set(user.id, user);

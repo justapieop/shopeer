@@ -110,6 +110,7 @@ describe("TypeOrmUnitOfWork", () => {
     ["product save", ProductEntity, TypeOrmProductRepository, "save", [{}]],
     ["category save", CategoryEntity, TypeOrmCategoryRepository, "save", [{}]],
     ["user save", UserEntity, TypeOrmUserRepository, "save", [{}]],
+    ["user creation", UserEntity, TypeOrmUserRepository, "create", [{}]],
     ["role save", RoleEntity, TypeOrmRoleRepository, "save", [{}]],
   ]) {
     it(`rejects ${name} through a normal repository provider`, async () => {

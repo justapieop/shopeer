@@ -7,6 +7,10 @@ export class UserUseCase {
     private readonly userRepository: UserRepository,
   ) { }
 
+  public async create(user: User): Promise<User> {
+    return this.unitOfWork.execute(async ({ users }) => users.create(user));
+  }
+
   public async save(user: User): Promise<User> { 
     return this.unitOfWork.execute(async ({ users }) => users.save(user));
   }

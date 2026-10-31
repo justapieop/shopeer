@@ -23,13 +23,12 @@ export class AuthController {
   @ApiOperation({ summary: "Register a user" })
   @ApiBody({ type: UserRegistrationDto })
   @ApiCreatedResponse({ type: UserRegisterResponseDto, description: "The new user is active by default." })
-  @ApiErrors({ status: 400, description: "Invalid registration data or a username that is already registered." })
+  @ApiErrors(
+    { status: 400, description: "Invalid registration data." },
+    { status: 409, description: "The username is already registered, including a concurrent registration." },
+  )
   public async register(@Body() data: UserRegistrationDto): Promise<UserRegisterResponseDto> {
-    const user: User | null = await this.authService.registration(data.username, data.password);
-
-    if (!user) { 
-      throw new BadRequestException(`User with username ${data.username} already exists`);
-    }
+    const user: User = await this.authService.registration(data.username, data.password);
 
     return {
       id: user.id,

@@ -10,6 +10,10 @@ The specification is generated from controller and DTO decorators and covers all
 
 ## Authentication
 
+Registration returns HTTP 409 when the username already exists, including when
+another request registers it concurrently. The database's unique username
+constraint is authoritative; only one concurrent registration can succeed.
+
 Cart and order operations read the JWT only from the `access_token` cookie.
 Call `POST /auth/login` first; it returns HTTP 201 with the public user and sets
 an HttpOnly cookie lasting one hour, with `Path=/` and `SameSite=Strict`.

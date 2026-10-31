@@ -3,6 +3,13 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { DataSource } from "typeorm";
+import { Test } from "@nestjs/testing";
+import { ValidationPipe } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import request from "supertest";
+import { AuthService } from "../dist/nest/modules/auth/Auth.service.js";
+import { AuthController } from "../dist/nest/modules/auth/Auth.controller.js";
+import { DomainErrorFilter } from "../dist/nest/common/filters/DomainError.filter.js";
 import { CartUseCase, OrderUseCase, UserUseCase } from "@shopeer/case";
 import { CartChangedError, OutOfStockError, Permission, Role } from "@shopeer/domain";
 import { TypeOrmUnitOfWork } from "../dist/database/TypeOrmUnitOfWork.js";
@@ -123,6 +130,46 @@ describe("Unit of Work with PostgreSQL", {
     const view = await cart.getCart(user.id);
     assert.equal(view.cart.userId, user.id);
     assert.equal(await database.getRepository(CartEntity).countBy({ userId: user.id }), 1);
+  });
+
+  it("registers a username once when concurrent HTTP requests both read it as available", async () => {
+    const repository = new TypeOrmUserRepository(database.getRepository(UserEntity));
+    const users = new UserUseCase(unitOfWork, repository);
+    const fetch = users.fetchUserByUsername.bind(users);
+    let reads = 0;
+    let release;
+    const bothRead = new Promise((resolve) => { release = resolve; });
+    users.fetchUserByUsername = async (username) => {
+      const existing = await fetch(username);
+      if (++reads === 2) release();
+      await bothRead;
+      return existing;
+    };
+    const config = new ConfigService({ NODE_ENV: "test", JWT_SECRET: "registration-test" });
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: new AuthService(users, config) },
+        { provide: ConfigService, useValue: config },
+      ],
+    }).compile();
+    const app = module.createNestApplication({ logger: false });
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalFilters(new DomainErrorFilter());
+    await app.init();
+    try {
+      const register = () => request(app.getHttpServer()).post("/auth/register")
+        .send({ username: "concurrent", password: "ExamplePass1!" });
+      const responses = await Promise.all([register(), register()]);
+      assert.deepEqual(responses.map((response) => response.status).sort(), [201, 409]);
+      assert.equal(reads, 2);
+      assert.equal(await database.getRepository(UserEntity).countBy({ username: "concurrent" }), 1);
+      const winner = await repository.fetchUserByUsername("concurrent");
+      const { verify } = await import("@node-rs/argon2");
+      assert.equal(await verify(winner.hashedPassword, "ExamplePass1!"), true);
+    } finally {
+      await app.close();
+    }
   });
 
   it("rolls back changes made through multiple repositories on a late failure", async () => {

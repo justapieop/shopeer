@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { createId } from "@paralleldrive/cuid2";
 import { Algorithm, hash, verify } from "@node-rs/argon2";
 import { UserUseCase } from "@shopeer/case";
-import { User } from "@shopeer/domain";
+import { User, UsernameAlreadyExistsError } from "@shopeer/domain";
 import { ConfigService } from "@nestjs/config";
 import jwt from "jsonwebtoken";
 import { ACCESS_TOKEN_TTL_SECONDS } from "../../common/auth-cookie.js";
@@ -16,11 +16,11 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) { }
 
-  public async registration(username: string, password: string): Promise<User | null> {
+  public async registration(username: string, password: string): Promise<User> {
     const user: User | null = await this.userUseCase.fetchUserByUsername(username);
 
     if (user) {
-      return null;
+      throw new UsernameAlreadyExistsError(username);
     }
 
     const newUser: User = new User({
@@ -30,7 +30,7 @@ export class AuthService {
       suspended: false,
     });
 
-    return this.userUseCase.save(newUser);
+    return this.userUseCase.create(newUser);
   }
 
   public async login(username: string, password: string): Promise<User | null> {

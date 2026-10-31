@@ -108,6 +108,8 @@ export interface RoleRepository {
 }
 
 export interface UserRepository {
+  /** Insert only; duplicate usernames raise UsernameAlreadyExistsError. */
+  create(user: User): User | Promise<User>;
   save(user: User): User | Promise<User>;
   fetchUserById(id: string): User | null | Promise<User | null>;
   fetchUserByUsername(username: string): User | null | Promise<User | null>;

@@ -57,6 +57,20 @@ describe("save use cases", () => {
     expect(users.users.size).toBe(0);
   });
 
+  it("creates users through the transaction scope and rolls back late failures", async () => {
+    const readOnly = Object.assign(Object.create(users), {
+      create: vi.fn(() => { throw new Error("create outside UoW"); }),
+    });
+    const useCase = new UserUseCase(unitOfWork, readOnly);
+    const user = makeUser("alice");
+    expect(await useCase.create(user)).toBe(user);
+    expect(readOnly.create).not.toHaveBeenCalled();
+    const failure = new Error("commit failed");
+    await expect(new UserUseCase(lateFailure(failure), users).create(makeUser("bob"))).rejects.toBe(failure);
+    expect(users.fetchUserById("bob")).toBeNull();
+    expect(users.fetchUserById("alice")).toBe(user);
+  });
+
   it("saves categories through the scope and rolls back failed updates", async () => {
     const category = new Category({ categoryId: "cat", name: "Original" });
     const useCase = new CategoryUseCase(unitOfWork, readProvider(categories));
