@@ -9,7 +9,7 @@ Backend bán hàng (sản phẩm → giỏ hàng → thanh toán → đơn hàng
 | `domain/` | Đối tượng và luật nghiệp vụ |
 | `case/` | Use case và port (interface repository) |
 | `infra/` | NestJS: controller, repository TypeORM, migration |
-| `app/` | Điểm khởi động server |
+| `apps/api/` | Điểm khởi động server |
 
 ## Cần cài sẵn
 

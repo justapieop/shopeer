@@ -8,7 +8,7 @@ RUN corepack enable && corepack prepare pnpm@12.4.1 --activate
 WORKDIR /workspace
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY app/package.json app/package.json
+COPY apps/api/package.json apps/api/package.json
 COPY case/package.json case/package.json
 COPY domain/package.json domain/package.json
 COPY infra/package.json infra/package.json

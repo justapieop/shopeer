@@ -3,8 +3,8 @@
   "scripts": {
     "build": "pnpm --recursive run build",
     "test": "pnpm build && pnpm --recursive --if-present run test",
-    "start": "node app/dist/index.js",
-    "start:dev": "pnpm build && node app/dist/index.js | pnpm dlx pino-pretty",
+    "start": "node apps/api/dist/index.js",
+    "start:dev": "pnpm build && node apps/api/dist/index.js | pnpm dlx pino-pretty",
     "db:up": "docker compose up -d --wait",
     "db:migrate": "pnpm db:up && pnpm build && node infra/dist/database/migrate.js",
     "db:seed": "pnpm db:up && pnpm build && node infra/dist/database/seed.js",
