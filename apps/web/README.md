@@ -2,6 +2,10 @@
 
 Next.js App Router app in the pnpm workspace.
 
+Frontend code follows [Feature-Sliced Design](https://fsd.how/).
+See [AGENTS.md](./AGENTS.md) for the frontend-only architecture and import rules,
+including the Next.js `_app` / `_pages` layer naming convention.
+
 From the repository root:
 
 ```sh
@@ -22,3 +26,16 @@ configuration with Next.js browser and bundler settings. Next.js generates route
 types during development, builds, and the `typecheck` script.
 
 Add shared packages as explicit `workspace:*` dependencies before importing them.
+
+## UI libraries
+
+- HeroUI v3: import components from `@heroui/react`. Styles are loaded globally
+  after Tailwind CSS v4; no HeroUI provider is required.
+- Tailwind CSS v4: configured through `@tailwindcss/postcss` and `globals.css`.
+- `tailwind-variants`: compose reusable variants for custom components.
+- `lucide-react`: SVG icons; import individual icons as needed.
+- `next-themes`: the root client provider follows the system theme and applies
+  `light` / `dark` classes. Use `useTheme()` in client components to change themes.
+  Wait until mounted before rendering UI based on the current theme.
+
+HeroUI v3 uses CSS animations and does not require Framer Motion.
