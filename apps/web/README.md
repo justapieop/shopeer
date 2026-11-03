@@ -6,6 +6,23 @@ Frontend code follows [Feature-Sliced Design](https://fsd.how/).
 See [AGENTS.md](./AGENTS.md) for the frontend-only architecture and import rules,
 including the Next.js `_app` / `_pages` layer naming convention.
 
+```text
+src/
+  app/                    Next.js route entry points
+  _app/
+    layouts/              Root document layout and metadata
+    providers/            App-wide client providers
+    styles/               Global styles, Tailwind, and HeroUI imports
+  _pages/
+    home/
+      index.ts            Home slice public API
+      ui/                 Home page and scoped styles
+```
+
+`@/*` resolves to this app's `src/*`. Import other slices through their public
+API; keep relative imports within a slice. Introduce `features`, `entities`, and
+`shared` only as actual reusable code needs them.
+
 From the repository root:
 
 ```sh

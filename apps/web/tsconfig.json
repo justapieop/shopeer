@@ -14,7 +14,10 @@
     "emitDecoratorMetadata": false,
     "experimentalDecorators": false,
     "types": ["node", "react", "react-dom"],
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "next-env.d.ts",

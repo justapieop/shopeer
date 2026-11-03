@@ -1,19 +1,3 @@
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import { Providers } from "./providers";
-import "./globals.css";
+import "@/_app/styles/globals.css";
 
-export const metadata: Metadata = {
-  title: "Shopeer",
-  description: "The Shopeer storefront.",
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <Providers>{children}</Providers>
-      </body>
-    </html>
-  );
-}
+export { RootLayout as default, metadata } from "@/_app/layouts";
