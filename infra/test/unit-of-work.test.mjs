@@ -9,6 +9,7 @@ import { CartEntity, TypeOrmCartRepository } from "../dist/nest/modules/cart/Car
 import { CartItemEntity, TypeOrmCartItemRepository } from "../dist/nest/modules/cart/CartItem.repository.js";
 import { ProductEntity, TypeOrmProductRepository } from "../dist/nest/modules/product/Product.repository.js";
 import { CategoryEntity, TypeOrmCategoryRepository } from "../dist/nest/modules/product/Category.repository.js";
+import { RoleEntity, TypeOrmRoleRepository } from "../dist/nest/modules/role/Role.repository.js";
 import { UserEntity, TypeOrmUserRepository } from "../dist/nest/modules/user/User.repository.js";
 
 // Use TypeORM's real transaction orchestration with a controlled connection.
@@ -50,6 +51,7 @@ describe("TypeOrmUnitOfWork", () => {
       assert.equal(repositories.products.productRepository.manager, manager);
       assert.equal(repositories.users.userRepository.manager, manager);
       assert.equal(repositories.categories.categoryRepository.manager, manager);
+      assert.equal(repositories.roles.roleRepository.manager, manager);
       assert.equal(repositories.orders.orderRepository.manager, manager);
       assert.equal(repositories.orders.orderItemRepository.manager, manager);
       const line = await repositories.cartItems.addOrIncreaseQuantity({
@@ -108,6 +110,7 @@ describe("TypeOrmUnitOfWork", () => {
     ["product save", ProductEntity, TypeOrmProductRepository, "save", [{}]],
     ["category save", CategoryEntity, TypeOrmCategoryRepository, "save", [{}]],
     ["user save", UserEntity, TypeOrmUserRepository, "save", [{}]],
+    ["role save", RoleEntity, TypeOrmRoleRepository, "save", [{}]],
   ]) {
     it(`rejects ${name} through a normal repository provider`, async () => {
       const { dataSource, runners } = connection();

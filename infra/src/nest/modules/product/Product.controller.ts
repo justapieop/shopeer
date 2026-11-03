@@ -3,8 +3,18 @@ import { ProductUseCase } from "@shopeer/case";
 import type { Category, Product } from "@shopeer/domain";
 import { InMemoryCacheManager } from "../../common/cache/InMemoryCacheManager.js";
 import { CategoryResponseDto, ProductResponseDto } from "./Product.dto.js";
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from "@nestjs/swagger";
+import { ApiErrors } from "../../common/openapi/ApiErrors.js";
 
 @Controller("/products")
+@ApiTags("Products")
+@ApiErrors({ status: 500, description: "An unexpected server error occurred." })
 export class ProductController {
   public constructor(
     @Inject(ProductUseCase)
@@ -33,6 +43,8 @@ export class ProductController {
 }
 
 @Controller("/categories")
+@ApiTags("Categories")
+@ApiErrors({ status: 500, description: "An unexpected server error occurred." })
 export class CategoryController {
   public constructor(
     @Inject(ProductUseCase)
@@ -42,6 +54,11 @@ export class CategoryController {
   ) {}
 
   @Get()
+  @ApiOperation({
+    summary: "List categories",
+    description: "Returns all categories sorted by name.",
+  })
+  @ApiOkResponse({ type: [CategoryResponseDto] })
   public async listCategories(): Promise<CategoryResponseDto[]> {
     return this.cacheManager.getOrLoad(
       "catalog:categories",

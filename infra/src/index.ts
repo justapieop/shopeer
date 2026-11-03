@@ -6,6 +6,7 @@ import { ConfigService } from "@nestjs/config";
 import { NativeLogger } from "nestjs-pino";
 import cookieParser from "cookie-parser";
 import { DomainErrorFilter } from "./nest/common/filters/DomainError.filter.js";
+import { setupOpenApi } from "./nest/openapi.js";
 
 export async function initInfra(): Promise<void> {
   const app: INestApplication = await NestFactory.create(AppModule, { bufferLogs: true, });
@@ -15,6 +16,7 @@ export async function initInfra(): Promise<void> {
   app.useGlobalPipes(new StandardSchemaValidationPipe(), new ValidationPipe({ transform: true, }));
   app.useGlobalFilters(new DomainErrorFilter());
   app.use(cookieParser());
+  setupOpenApi(app);
 
   const config: ConfigService = app.get(ConfigService);
 

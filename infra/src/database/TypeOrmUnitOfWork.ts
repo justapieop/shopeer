@@ -7,6 +7,7 @@ import { CartItemEntity, TypeOrmCartItemRepository } from "../nest/modules/cart/
 import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "../nest/modules/order/Order.repository.js";
 import { ProductEntity, TypeOrmProductRepository } from "../nest/modules/product/Product.repository.js";
 import { CategoryEntity, TypeOrmCategoryRepository } from "../nest/modules/product/Category.repository.js";
+import { RoleEntity, TypeOrmRoleRepository } from "../nest/modules/role/Role.repository.js";
 import { UserEntity, TypeOrmUserRepository } from "../nest/modules/user/User.repository.js";
 import { InMemoryCacheManager } from "../nest/common/cache/InMemoryCacheManager.js";
 
@@ -41,6 +42,7 @@ export class TypeOrmUnitOfWork implements UnitOfWork {
         products,
         users: new TypeOrmUserRepository(manager.getRepository(UserEntity)),
         categories,
+        roles: new TypeOrmRoleRepository(manager.getRepository(RoleEntity)),
         orders,
       };
       return work(repositories);

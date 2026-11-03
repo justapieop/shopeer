@@ -4,6 +4,7 @@ import type {
   Category,
   Order,
   Product,
+  Role,
   User,
   Transaction,
 } from "@shopeer/domain";
@@ -82,6 +83,7 @@ export interface RepositorySet {
   readonly orders: OrderRepository;
   readonly users: UserRepository;
   readonly categories: CategoryRepository;
+  readonly roles: RoleRepository;
 }
 
 export interface UnitOfWork<TRepositories = RepositorySet> {
@@ -95,6 +97,13 @@ export interface ProductRepository {
   fetchProductsByIds(productIds: string[]): Product[] | Promise<Product[]>;
   fetchAllProducts(): Product[] | Promise<Product[]>;
   fetchProductsByCategory(categoryId: string): Product[] | Promise<Product[]>;
+}
+
+export interface RoleRepository {
+  save(role: Role): Role | Promise<Role>;
+  fetchRoleById(roleId: string): Role | null | Promise<Role | null>;
+  /** The role the user belongs to. Each user has exactly one role. */
+  fetchRoleByUserId(userId: string): Role | null | Promise<Role | null>;
 }
 
 export interface UserRepository {

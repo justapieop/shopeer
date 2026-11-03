@@ -1,5 +1,7 @@
 # shopeer
 
+See [API documentation](docs/openapi.md) for Swagger UI, OpenAPI specifications, and authentication details.
+
 Backend bán hàng (sản phẩm → giỏ hàng → thanh toán → đơn hàng) viết bằng TypeScript, NestJS và PostgreSQL, theo Clean Architecture.
 
 | Package | Vai trò |

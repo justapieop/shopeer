@@ -5,6 +5,7 @@ import { UserUseCase } from "@shopeer/case";
 import { User } from "@shopeer/domain";
 import { ConfigService } from "@nestjs/config";
 import jwt from "jsonwebtoken";
+import { ACCESS_TOKEN_TTL_SECONDS } from "../../common/auth-cookie.js";
 
 @Injectable()
 export class AuthService {
@@ -50,16 +51,6 @@ export class AuthService {
 
   public signToken(user: User): string { 
     const secret: string = this.configService.getOrThrow("JWT_SECRET");
-    return jwt.sign({ sub: user.id, }, secret, { expiresIn: "1h", });
-  }
-
-  public verifyToken(token: string): boolean { 
-    const secret: string = this.configService.getOrThrow("JWT_SECRET");
-    try {
-      jwt.verify(token, secret, { complete: true, ignoreExpiration: false, });
-      return true;
-    } catch (e: any) { 
-      return false;
-    }
+    return jwt.sign({ sub: user.id, }, secret, { algorithm: "HS256", expiresIn: ACCESS_TOKEN_TTL_SECONDS, });
   }
 }
