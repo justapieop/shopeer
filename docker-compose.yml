@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: shopeer
       POSTGRES_DB: shopeer
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - shopeer-pgdata:/var/lib/postgresql/data
     healthcheck:

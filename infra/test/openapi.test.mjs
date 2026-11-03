@@ -4,7 +4,7 @@ import { after, before, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
 import { ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { CartUseCase, OrderUseCase, ProductUseCase, UserUseCase } from "@shopeer/case";
+import { AuthorizationUseCase, CartUseCase, OrderUseCase, ProductUseCase, UserUseCase } from "@shopeer/case";
 import { User } from "@shopeer/domain";
 import request from "supertest";
 import { createOpenApiDocument, setupOpenApi } from "../dist/nest/openapi.js";
@@ -15,6 +15,8 @@ import { OrderController } from "../dist/nest/modules/order/Order.controller.js"
 import { ProductController, CategoryController } from "../dist/nest/modules/product/Product.controller.js";
 import { UserController } from "../dist/nest/modules/user/User.controller.js";
 import { InMemoryCacheManager } from "../dist/nest/common/cache/InMemoryCacheManager.js";
+
+import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 
 const routes = [
   ["post", "/auth/register", "201"], ["post", "/auth/login", "201"],
@@ -34,6 +36,8 @@ describe("OpenAPI documentation", () => {
     const module = await Test.createTestingModule({
       controllers: [AuthController, CartController, OrderController, ProductController, CategoryController, UserController],
       providers: [
+        UserPipe,
+        { provide: AuthorizationUseCase, useValue: { hasPermissions: async () => true } },
         { provide: AuthService, useValue: { registration: async () => storedUser, login: async () => storedUser, signToken: () => "signed-jwt" } },
         { provide: CartUseCase, useValue: {} },
         { provide: OrderUseCase, useValue: {} },

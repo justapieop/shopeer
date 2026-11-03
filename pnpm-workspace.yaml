@@ -5,3 +5,4 @@ packages:
   - infra/
 allowBuilds:
   '@scarf/scarf': false
+  bcrypt: false
