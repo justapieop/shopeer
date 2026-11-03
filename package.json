@@ -1,6 +1,9 @@
 {
   "name": "shopeer",
   "scripts": {
+    "dev:web": "pnpm --filter @shopeer/web dev",
+    "build:web": "pnpm --filter @shopeer/web build",
+    "start:web": "pnpm --filter @shopeer/web start",
     "build": "pnpm --recursive run build",
     "test": "pnpm build && pnpm --recursive --if-present run test",
     "start": "node apps/api/dist/index.js",

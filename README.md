@@ -10,6 +10,7 @@ Backend bán hàng (sản phẩm → giỏ hàng → thanh toán → đơn hàng
 | `case/` | Use case và port (interface repository) |
 | `infra/` | NestJS: controller, repository TypeORM, migration |
 | `apps/api/` | Điểm khởi động server |
+| `apps/web/` | Frontend Next.js (App Router) |
 
 ## Cần cài sẵn
 
@@ -38,6 +39,9 @@ Mở Docker Desktop trước khi chạy `pnpm db:seed`.
 | `pnpm build` | Build tất cả package |
 | `pnpm start` | Chạy server đã build |
 | `pnpm start:dev` | Build rồi chạy server, log dễ đọc |
+| `pnpm dev:web` | Chạy frontend tại http://localhost:3001 |
+| `pnpm build:web` | Build frontend Next.js |
+| `pnpm start:web` | Chạy frontend đã build tại http://localhost:3001 |
 | `pnpm test` | Build rồi chạy toàn bộ test |
 | `pnpm race 50` | Demo race condition: 50 người cùng thanh toán một sản phẩm chỉ còn 5 chiếc (cần server đang chạy và vừa `pnpm db:seed`) |
 

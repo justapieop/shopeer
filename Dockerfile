@@ -9,6 +9,7 @@ WORKDIR /workspace
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
 COPY case/package.json case/package.json
 COPY domain/package.json domain/package.json
 COPY infra/package.json infra/package.json
@@ -17,7 +18,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN pnpm build
+RUN pnpm --filter @shopeer/app... build
 RUN pnpm deploy --filter @shopeer/app --prod /out
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot

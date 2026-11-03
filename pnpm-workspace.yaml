@@ -1,5 +1,5 @@
 packages:
-  - apps/api/
+  - apps/*
   - domain/
   - case/
   - infra/
