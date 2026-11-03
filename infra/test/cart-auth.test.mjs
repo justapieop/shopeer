@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
-import { CartUseCase, UserUseCase } from "@shopeer/case";
+import { AuthorizationUseCase, CartUseCase, UserUseCase } from "@shopeer/case";
 import { Cart, User } from "@shopeer/domain";
 import cookieParser from "cookie-parser";
 import { hash } from "@node-rs/argon2";
@@ -11,6 +11,8 @@ import request from "supertest";
 import { AuthController } from "../dist/nest/modules/auth/Auth.controller.js";
 import { AuthService } from "../dist/nest/modules/auth/Auth.service.js";
 import { CartController } from "../dist/nest/modules/cart/Cart.controller.js";
+import { PermissionsGuard } from "../dist/nest/common/guards/Permissions.guard.js";
+import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 
 let storedUser;
 
@@ -26,6 +28,9 @@ describe("cart listing authentication", () => {
       providers: [
         { provide: ConfigService, useValue: config },
         { provide: AuthService, useValue: authService },
+        PermissionsGuard,
+        UserPipe,
+        { provide: AuthorizationUseCase, useValue: { hasPermissions: async () => true } },
         { provide: UserUseCase, useValue: { fetchUserById: async (id) => id === storedUser.id ? storedUser : null } },
         { provide: CartUseCase, useValue: {
           async getCart(userId) {
