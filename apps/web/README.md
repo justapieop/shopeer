@@ -43,6 +43,8 @@ configuration with Next.js browser and bundler settings. Next.js generates route
 types during development, builds, and the `typecheck` script.
 
 Add shared packages as explicit `workspace:*` dependencies before importing them.
+`@shopeer/web-lib` is an empty library workspace in `packages/web-lib`, already
+linked as a dependency and configured for source transpilation by Next.js.
 
 ## UI libraries
 

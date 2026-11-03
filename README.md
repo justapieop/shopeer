@@ -11,6 +11,7 @@ Backend bán hàng (sản phẩm → giỏ hàng → thanh toán → đơn hàng
 | `infra/` | NestJS: controller, repository TypeORM, migration |
 | `apps/api/` | Điểm khởi động server |
 | `apps/web/` | Frontend Next.js (App Router) |
+| `packages/web-lib/` | Thư viện frontend dùng chung (chưa có implementation) |
 
 ## Cần cài sẵn
 

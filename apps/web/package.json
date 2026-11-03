@@ -10,6 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@shopeer/web-lib": "workspace:*",
     "@heroui/react": "^3.2.7",
     "@heroui/styles": "^3.2.7",
     "lucide-react": "^1.66.0",
