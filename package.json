@@ -1,6 +1,7 @@
 {
   "name": "shopeer",
   "scripts": {
+    "generate:api": "pnpm --filter @shopeer/web-lib generate:api",
     "dev:web": "pnpm --filter @shopeer/web dev",
     "build:web": "pnpm --filter @shopeer/web build",
     "start:web": "pnpm --filter @shopeer/web start",
