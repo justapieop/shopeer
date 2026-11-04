@@ -1,20 +1,41 @@
 .page {
-  width: min(100% - 3rem, 56rem);
-  margin: 15vh auto;
+  min-height: 100svh;
+  padding: 0 clamp(24px, 6vw, 80px);
+  background: var(--background);
+  color: var(--foreground);
 }
 
-.eyebrow {
+.header {
+  display: flex;
+  align-items: center;
+  height: 96px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: -0.06em;
 }
 
-.page h1 {
-  max-width: 15ch;
-  font-size: clamp(2.5rem, 7vw, 5rem);
+.main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 192px);
+  max-width: 960px;
+  margin-inline: auto;
+  padding-block: 48px;
+}
+
+.main h1 {
+  max-width: 12ch;
+  margin: 0;
+  font-size: clamp(44px, 7vw, 88px);
+  font-weight: 500;
+  letter-spacing: -0.055em;
   line-height: 1.05;
+  text-wrap: balance;
 }
 
-.page p {
+.main p {
+  margin: 24px 0 0;
+  font-size: 18px;
   line-height: 1.6;
 }

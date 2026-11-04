@@ -2,10 +2,12 @@ import styles from "./home-page.module.css";
 
 export function HomePage() {
   return (
-    <main className={styles["page"]}>
-      <p className={styles["eyebrow"]}>Shopeer</p>
-      <h1>Your storefront starts here.</h1>
-      <p>A new home for products, carts, and orders.</p>
-    </main>
+    <div className={styles["page"]}>
+      <header className={styles["header"]}>shopeer</header>
+      <main className={styles["main"]}>
+        <h1>Shopping, made simple.</h1>
+        <p>A new home for your everyday finds.</p>
+      </main>
+    </div>
   );
 }
