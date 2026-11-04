@@ -156,3 +156,5 @@ vite.config.ts.timestamp-*
 
 # Turborepo
 .turbo
+# heroui-agents-md
+.heroui-docs/
