@@ -10,6 +10,7 @@ import { ProductModule } from "../product/Product.module.js";
 import { CartModule } from "../cart/Cart.module.js";
 import { OrderModule } from "../order/Order.module.js";
 import { InMemoryCacheModule } from "../../common/cache/InMemoryCache.module.js";
+import { logRedaction } from "../../common/log-redaction.js";
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { InMemoryCacheModule } from "../../common/cache/InMemoryCache.module.js"
         return {
           pinoHttp: {
             ...nativeLoggerOptions,
+            redact: logRedaction,
             level: devMode ? "debug" : "info",
             autoLogging: devMode,
             quietReqLogger: !devMode,
