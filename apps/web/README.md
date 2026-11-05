@@ -62,7 +62,15 @@ for cache and authentication middleware regression coverage.
 
 ## Store catalog
 
-`/store` renders the public catalog through the SDK on the server. Products are
+`/store` requires a valid session before rendering or fetching the catalog. Missing,
+expired, invalid, and suspended sessions redirect to `/login?next=store`; successful
+login returns to the store. The home-page store link only appears for signed-in users.
+Server authorization calls `/user/me` without caching user data, once per store
+request (deduplicated within that render). Catalog caching remains independent;
+the public product API itself retains its existing access rules. Later client 401s
+also hide the store and redirect to login.
+
+The store renders the public catalog through the SDK on the server. Products are
 requested 12 at a time using `page` and `categoryId` query parameters. Product
 responses are cached by URL for 60 seconds; categories for five minutes. These
 public requests omit credentials and do not share the session cache. An eight-second

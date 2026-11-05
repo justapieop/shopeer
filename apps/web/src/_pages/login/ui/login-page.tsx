@@ -27,7 +27,7 @@ export function LoginPage() {
     try {
       const user = await login(String(data.get("username") ?? "").trim(), String(data.get("password") ?? ""));
       setUser(user);
-      router.replace("/");
+      router.replace(new URL(window.location.href).searchParams.get("next") === "store" ? "/store" : "/");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Please try again.");
       submitting.current = false;
