@@ -30,7 +30,19 @@ pnpm install
 pnpm dev:web
 ```
 
-Open http://localhost:3001. The API uses port 3000.
+Open http://localhost:3000. Run the API on port 3001 (`PORT=3001` in the root `.env`).
+
+Copy `apps/web/.env.example` to `apps/web/.env.local` to override `API_URL`.
+It defaults to `http://127.0.0.1:3001` and is server-only. Restart Next.js after
+changing it; production builds resolve the rewrite destination at build time.
+
+The `/login` page sends credentials to `/api/auth/login`. Next.js proxies
+`/api/:path*` to the backend, passing through its `Set-Cookie` response and
+forwarding cookies on subsequent requests. Browser API modules use the shared
+typed client at `src/shared/api`, whose base URL is `/api`. The token stays in
+the backend's HttpOnly, SameSite=Strict cookie, with a one-hour lifetime.
+Production requires HTTPS because the API marks this cookie Secure.
+Successful login returns to `/`.
 
 ```sh
 pnpm build:web
@@ -43,7 +55,7 @@ configuration with Next.js browser and bundler settings. Next.js generates route
 types during development, builds, and the `typecheck` script.
 
 Add shared packages as explicit `workspace:*` dependencies before importing them.
-`@shopeer/web-lib` is an empty library workspace in `packages/web-lib`, already
+`@shopeer/web-lib` provides the typed OpenAPI client in `packages/web-lib`, already
 linked as a dependency and configured for source transpilation by Next.js.
 
 ## UI libraries

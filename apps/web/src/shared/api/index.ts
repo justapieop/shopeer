@@ -1,0 +1,4 @@
+import { createApiClient } from "@shopeer/web-lib";
+
+/** Browser API calls use the storefront origin so its HttpOnly cookie is included. */
+export const api = createApiClient({ baseUrl: "/api" });
