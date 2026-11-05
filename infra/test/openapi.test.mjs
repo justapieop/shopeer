@@ -20,7 +20,7 @@ import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 
 const routes = [
   ["post", "/auth/register", "201"], ["post", "/auth/login", "201"],
-  ["get", "/user/{id}", "200"],
+  ["get", "/user/{id}", "200"], ["get", "/user/me", "200"],
   ["get", "/products", "200"], ["get", "/products/{productId}", "200"], ["get", "/categories", "200"],
   ["get", "/cart", "200"], ["delete", "/cart", "200"], ["post", "/cart/items", "200"],
   ["patch", "/cart/items/{productId}", "200"], ["delete", "/cart/items/{productId}", "200"],
@@ -81,7 +81,7 @@ describe("OpenAPI documentation", () => {
     await request(app.getHttpServer()).get("/user/missing").expect(404);
   });
 
-  it("documents exactly the 14 production operations with summaries, tags, and response schemas", () => {
+  it("documents exactly the production operations with summaries, tags, and response schemas", () => {
     const documented = Object.entries(document.paths).flatMap(([path, item]) =>
       Object.keys(item).filter((method) => ["get", "post", "patch", "delete"].includes(method)).map((method) => `${method} ${path}`),
     );
@@ -98,14 +98,14 @@ describe("OpenAPI documentation", () => {
     }
   });
 
-  it("declares cookie authentication on all eight protected operations only", () => {
+  it("declares cookie authentication on protected operations only", () => {
     assert.equal(document.components.securitySchemes.cookie.type, "apiKey");
     assert.equal(document.components.securitySchemes.cookie.in, "cookie");
     assert.equal(document.components.securitySchemes.cookie.name, "access_token");
     assert.equal(document.components.securitySchemes.bearer, undefined);
     for (const [method, path] of routes) {
       const operation = document.paths[path][method];
-      const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path === "/checkout";
+      const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path === "/checkout" || path === "/user/me";
       if (protectedRoute) {
         assert.deepEqual(operation.security, [{ cookie: [] }]);
         assert.ok(operation.responses["401"]);
