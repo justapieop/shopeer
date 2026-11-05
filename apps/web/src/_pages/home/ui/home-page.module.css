@@ -15,7 +15,7 @@
   justify-content: space-between;
 }
 
-.login { font-size: 14px; font-weight: 400; letter-spacing: normal; color: inherit; text-decoration: underline; padding-block: 12px; }
+.storeLink { display: inline-flex; align-items: center; gap: 24px; width: fit-content; min-height: 48px; margin-top: 32px; padding: 12px 24px; background: var(--foreground); color: var(--background); border-radius: 6px; font-size: 16px; text-decoration: none; }
 
 .main {
   display: flex;

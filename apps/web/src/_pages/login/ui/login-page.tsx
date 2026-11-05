@@ -6,10 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { login } from "../api/login";
+import { useSession } from "@/entities/session";
 import styles from "./login-page.module.css";
 
 export function LoginPage() {
   const router = useRouter();
+  const { setUser } = useSession();
   const submitting = useRef(false);
   const [pending, setPending] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -23,9 +25,9 @@ export function LoginPage() {
     setPending(true);
     setError("");
     try {
-      await login(String(data.get("username") ?? "").trim(), String(data.get("password") ?? ""));
+      const user = await login(String(data.get("username") ?? "").trim(), String(data.get("password") ?? ""));
+      setUser(user);
       router.replace("/");
-      router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Please try again.");
       submitting.current = false;

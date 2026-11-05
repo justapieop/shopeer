@@ -44,6 +44,42 @@ the backend's HttpOnly, SameSite=Strict cookie, with a one-hour lifetime.
 Production requires HTTPS because the API marks this cookie Secure.
 Successful login returns to `/`.
 
+Session state lives in the `entities/session` provider. `useSession()` exposes
+the current user, loading/error state, `refresh()`, `setUser()`, and `clearSession()`.
+It checks `/api/user/me` once on load and shares a five-minute in-memory cache,
+including anonymous results. Navigation, focus, returning to the tab, and reconnecting
+only revalidate stale entries; there is no polling. Concurrent checks share one request.
+Failures keep the last known user and back off for 30 seconds; explicit retry bypasses
+that delay. Login fills the cache directly from its response. A 401 from the shared
+API client clears the session; a 403 does not. Responses from requests made before
+a login or session clear cannot overwrite the newer state.
+
+There is no logout endpoint yet. When implementing logout, clear the HttpOnly
+cookie on the server before calling `clearSession()`; clearing the client cache
+alone does not revoke a session. The cache controls UI only, while protected API
+routes continue to authenticate each request. Run `pnpm --filter @shopeer/web test`
+for cache and authentication middleware regression coverage.
+
+## Store catalog
+
+`/store` renders the public catalog through the SDK on the server. Products are
+requested 12 at a time using `page` and `categoryId` query parameters. Product
+responses are cached by URL for 60 seconds; categories for five minutes. These
+public requests omit credentials and do not share the session cache. An eight-second
+timeout bounds failed upstream requests. Fetches start in parallel and repeated
+calls within a server render are deduplicated.
+
+The initial shell streams with a grid placeholder. Subsequent page and category
+changes keep the current products visible until the new results arrive, with an
+inline loading state. Links prefetch on hover/focus rather than fetching every
+category in the viewport. Below-the-fold images load lazily in fixed-size frames.
+Navigation remains usable without JavaScript, including browser back/forward.
+
+The API returns arrays without totals, so the UI uses Previous/Next and only offers
+Next after a full page. An exact multiple of 12 may end in an empty final page with
+a working Previous link; no extra count or look-ahead request is made. Price and
+stock may be up to 60 seconds old; checkout remains authoritative.
+
 ```sh
 pnpm build:web
 pnpm start:web

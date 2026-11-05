@@ -1,6 +1,7 @@
 import { api } from "@/shared/api";
+import type { SessionUser } from "@/entities/session";
 
-export async function login(username: string, password: string): Promise<void> {
+export async function login(username: string, password: string): Promise<SessionUser> {
   let result;
   try {
     result = await api.POST("/auth/login", {
@@ -19,4 +20,6 @@ export async function login(username: string, password: string): Promise<void> {
     }
     throw new Error("We couldn’t log you in right now. Please try again.");
   }
+  if (!result.data) throw new Error("We couldn’t read your account. Please try again.");
+  return result.data;
 }
