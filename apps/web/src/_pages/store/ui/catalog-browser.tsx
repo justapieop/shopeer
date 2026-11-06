@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { components } from "@shopeer/web-lib";
 import { catalogHref, PAGE_SIZE } from "../model/catalog-query";
 import { ProductImage } from "./product-image";
+import { AddToCart } from "./add-to-cart";
+import { addCartItem, type Cart } from "../api/add-cart-item";
+import { createCartQueue } from "../model/cart-queue";
 import styles from "./store-page.module.css";
 
 type Product = components["schemas"]["ProductResponseDto"];
@@ -18,11 +21,19 @@ export function CatalogBrowser({ products, categories, page, categoryId, categor
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [queueAddition] = useState(() => createCartQueue(addCartItem));
   const catalog = useRef<HTMLDivElement>(null);
   const previousQuery = useRef({ page, categoryId });
   const hasNext = products.length === PAGE_SIZE;
   const first = (page - 1) * PAGE_SIZE + 1;
   const categoryNames = new Map(categories.map((category) => [category.categoryId, category.name]));
+
+  async function addToCart(productId: string, quantity: number) {
+    const updated = await queueAddition(productId, quantity);
+    setCart(updated);
+    return updated;
+  }
 
   useEffect(() => {
     if (previousQuery.current.page !== page || previousQuery.current.categoryId !== categoryId) {
@@ -61,20 +72,26 @@ export function CatalogBrowser({ products, categories, page, categoryId, categor
         <p>{products.length ? `Products ${first}–${first + products.length - 1}` : "No products to show"} <span>· Page {page}</span></p>
         <span role="status" aria-live="polite">{pending ? "Loading products…" : "Sorted by name"}</span>
       </div>
+      {cart && <p className={styles["cartSummary"]} role="status" aria-live="polite">Cart: {cart.totalQuantity} {cart.totalQuantity === 1 ? "item" : "items"} · {currency.format(cart.totalAmount)}</p>}
       {products.length ? (
         <ul className={styles["grid"]} data-pending={pending || undefined}>
-          {products.map((product, index) => (
+          {products.map((product, index) => {
+            const cartItem = cart?.items.find((item) => item.productId === product.productId);
+            const stock = cartItem?.stock ?? product.stock;
+            const available = Math.max(0, stock - (cartItem?.quantity ?? 0));
+            return (
             <li key={product.productId} className={styles["product"]}>
               <ProductImage key={product.imageUrl} src={product.imageUrl} name={product.name} eager={index < 3} />
               <div className={styles["productMeta"]}>
                 <span>{categoryNames.get(product.categoryId) ?? "Product"}</span>
-                <span>{product.stock > 0 ? "In stock" : "Sold out"}</span>
+                <span>{stock > 0 ? "In stock" : "Sold out"}</span>
               </div>
               <h2>{product.name}</h2>
               <p className={styles["description"]}>{product.description}</p>
-              <p className={styles["price"]}>{currency.format(product.price)}</p>
+              <p className={styles["price"]}>{currency.format(cartItem?.unitPrice ?? product.price)}</p>
+              <AddToCart productId={product.productId} name={product.name} stock={stock} available={available} onAdd={addToCart} />
             </li>
-          ))}
+          ); })}
         </ul>
       ) : (
         <div className={styles["empty"]}>

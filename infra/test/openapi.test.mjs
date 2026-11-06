@@ -20,6 +20,7 @@ import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 
 const routes = [
   ["post", "/auth/register", "201"], ["post", "/auth/login", "201"],
+  ["post", "/auth/refresh", "200"],
   ["get", "/user/{id}", "200"], ["get", "/user/me", "200"],
   ["get", "/products", "200"], ["get", "/products/{productId}", "200"], ["get", "/categories", "200"],
   ["get", "/cart", "200"], ["delete", "/cart", "200"], ["post", "/cart/items", "200"],
@@ -38,7 +39,7 @@ describe("OpenAPI documentation", () => {
       providers: [
         UserPipe,
         { provide: AuthorizationUseCase, useValue: { hasPermissions: async () => true } },
-        { provide: AuthService, useValue: { registration: async () => storedUser, login: async () => storedUser, signToken: () => "signed-jwt" } },
+        { provide: AuthService, useValue: { registration: async () => storedUser, login: async () => storedUser, signToken: () => "signed-jwt", signRefreshToken: () => "signed-refresh-jwt" } },
         { provide: CartUseCase, useValue: {} },
         { provide: OrderUseCase, useValue: {} },
         { provide: ProductUseCase, useValue: {} },
@@ -108,6 +109,11 @@ describe("OpenAPI documentation", () => {
       const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path === "/checkout" || path === "/user/me";
       if (protectedRoute) {
         assert.deepEqual(operation.security, [{ cookie: [] }]);
+        assert.ok(operation.responses["401"]);
+        assert.ok(operation.responses["403"]);
+      } else if (path === "/auth/refresh") {
+        assert.equal(document.components.securitySchemes["refresh-cookie"].name, "refresh_token");
+        assert.deepEqual(operation.security, [{ "refresh-cookie": [] }]);
         assert.ok(operation.responses["401"]);
         assert.ok(operation.responses["403"]);
       } else {

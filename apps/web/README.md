@@ -38,10 +38,12 @@ changing it; production builds resolve the rewrite destination at build time.
 
 The `/login` page sends credentials to `/api/auth/login`. Next.js proxies
 `/api/:path*` to the backend, passing through its `Set-Cookie` response and
-forwarding cookies on subsequent requests. Browser API modules use the shared
-typed client at `src/shared/api`, whose base URL is `/api`. The token stays in
-the backend's HttpOnly, SameSite=Strict cookie, with a one-hour lifetime.
-Production requires HTTPS because the API marks this cookie Secure.
+forwarding cookies on subsequent requests. Thin login and refresh Route Handlers
+adapt the backend refresh cookie path from `/auth/refresh` to `/api/auth/refresh`;
+other API paths use the rewrite. Browser API modules use the shared typed client
+at `src/shared/api`, whose base URL is `/api`. Both tokens stay in HttpOnly,
+SameSite=Strict cookies: access lasts one hour and refresh lasts seven days.
+Production requires HTTPS because the API marks these cookies Secure.
 Successful login returns to `/`.
 
 Session state lives in the `entities/session` provider. `useSession()` exposes
@@ -51,11 +53,16 @@ including anonymous results. Navigation, focus, returning to the tab, and reconn
 only revalidate stale entries; there is no polling. Concurrent checks share one request.
 Failures keep the last known user and back off for 30 seconds; explicit retry bypasses
 that delay. Login fills the cache directly from its response. A 401 from the shared
-API client clears the session; a 403 does not. Responses from requests made before
+API client first makes one shared `POST /api/auth/refresh` attempt, then replays
+each rejected request once, preserving its body and credentials. Late 401s from
+the same access-cookie generation reuse the completed renewal. Login, registration,
+and refresh requests do not trigger recovery. A final 401 clears the session;
+a 403 does not. Network failures and server errors do not replay writes or clear
+the cached user. Responses from requests made before
 a login or session clear cannot overwrite the newer state.
 
 There is no logout endpoint yet. When implementing logout, clear the HttpOnly
-cookie on the server before calling `clearSession()`; clearing the client cache
+cookies on the server before calling `clearSession()`; clearing the client cache
 alone does not revoke a session. The cache controls UI only, while protected API
 routes continue to authenticate each request. Run `pnpm --filter @shopeer/web test`
 for cache and authentication middleware regression coverage.
@@ -63,8 +70,11 @@ for cache and authentication middleware regression coverage.
 ## Store catalog
 
 `/store` requires a valid session before rendering or fetching the catalog. Missing,
-expired, invalid, and suspended sessions redirect to `/login?next=store`; successful
-login returns to the store. The home-page store link only appears for signed-in users.
+expired, invalid, and suspended access sessions redirect to `/login?next=store`.
+That page forces a browser session check, allowing the refresh cookie to renew
+access and return to the store without entering credentials. Unrecoverable sessions
+remain on the login form. Server Components never try to set cookies during render.
+The home-page store link only appears for signed-in users.
 Server authorization calls `/user/me` without caching user data, once per store
 request (deduplicated within that render). Catalog caching remains independent;
 the public product API itself retains its existing access rules. Later client 401s
@@ -87,6 +97,14 @@ The API returns arrays without totals, so the UI uses Previous/Next and only off
 Next after a full page. An exact multiple of 12 may end in an empty final page with
 a working Previous link; no extra count or look-ahead request is made. Price and
 stock may be up to 60 seconds old; checkout remains authoritative.
+
+Each product has quantity controls and an Add to cart action using the SDK's
+`POST /cart/items` through the same-origin proxy. Sold-out products and quantities
+beyond known available stock are disabled. Successful responses update the cart
+count and total directly, including quantities already in the cart, without another
+GET or a catalog refresh. Additions are serialized to keep totals in order and a
+pending action cannot be submitted twice. Failed writes are never retried automatically;
+the API validates stock and permissions, and session 401s use the existing login flow.
 
 ```sh
 pnpm build:web

@@ -34,6 +34,11 @@ export class UserPipe implements PipeTransform<UserLookup, Promise<DomainUser>> 
       throw new UnauthorizedException("Invalid access token subject");
     }
 
+    // Keep existing access tokens valid, but never accept a refresh token here.
+    if (payload["token_use"] !== undefined && payload["token_use"] !== "access") {
+      throw new UnauthorizedException("Invalid access token type");
+    }
+
     const user: DomainUser | null = await this.userUseCase.fetchUserById(payload.sub);
 
     if (!user) {

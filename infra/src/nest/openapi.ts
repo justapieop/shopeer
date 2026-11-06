@@ -7,6 +7,7 @@ export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
     .setDescription("Public catalog, user registration and profiles, and authenticated cart and checkout operations. Monetary amounts are integer VND. Log in to set the HttpOnly access_token cookie used by protected routes.")
     .setVersion("1.0.0")
     .addCookieAuth("access_token", { type: "apiKey", in: "cookie", description: "Set by POST /auth/login; automatically sent by same-site browser requests." }, "cookie")
+    .addCookieAuth("refresh_token", { type: "apiKey", in: "cookie", description: "Set by POST /auth/login; used only by POST /auth/refresh to renew access." }, "refresh-cookie")
     .build();
 
   return SwaggerModule.createDocument(app, configuration, { autoTagControllers: false });

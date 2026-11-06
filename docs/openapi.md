@@ -6,7 +6,7 @@ Start the application with `pnpm start:dev`. At the configured `PORT` (3000 by d
 - `/openapi.json` — generated OpenAPI JSON.
 - `/openapi.yaml` — generated OpenAPI YAML.
 
-The specification is generated from controller and DTO decorators and covers all 14 business operations: authentication, public user profiles, products, categories, cart operations, and orders. DTO properties are explicitly annotated because this project builds with `tsc`, without the Swagger CLI plugin.
+The specification is generated from controller and DTO decorators and covers authentication, public user profiles, products, categories, cart operations, and orders. DTO properties are explicitly annotated because this project builds with `tsc`, without the Swagger CLI plugin.
 
 ## Authentication
 
@@ -19,6 +19,20 @@ Call `POST /auth/login` first; it returns HTTP 201 with the public user and sets
 an HttpOnly cookie lasting one hour, with `Path=/` and `SameSite=Strict`.
 Production cookies also require HTTPS (`Secure`). The token is not returned in
 JSON. Bearer headers and user-ID headers are unsupported.
+
+Login also sets an HttpOnly `refresh_token` cookie lasting seven days, scoped to
+`Path=/auth/refresh`, with `SameSite=Strict` and `Secure` in production. Both JWTs
+are signed with `JWT_SECRET` using HS256 and carry distinct `token_use` claims.
+Call `POST /auth/refresh` with the refresh cookie to receive HTTP 200 with the
+public user and a new one-hour access cookie, even after the old access token
+expires. Missing, invalid, expired, or wrong-purpose tokens return HTTP 401;
+deleted users return 401 and suspended users return 403. Refresh tokens cannot
+authorize protected routes. Existing access tokens without `token_use` remain
+valid until they expire.
+
+Refresh tokens are stateless and reusable until their original expiry; refreshing
+does not rotate or extend them. There is no per-session revocation or replay
+detection. Sign in again after seven days.
 
 In Swagger UI, execute login on the same site before calling protected routes;
 the browser sends the cookie automatically. The Authorize dialog cannot set an

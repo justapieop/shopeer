@@ -4,18 +4,35 @@ import { Button, FieldError, Input, Label, TextField } from "@heroui/react";
 import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { login } from "../api/login";
 import { useSession } from "@/entities/session";
 import styles from "./login-page.module.css";
 
 export function LoginPage() {
   const router = useRouter();
-  const { setUser } = useSession();
+  const { setUser, refresh, status, user, error: sessionError } = useSession();
+  const [sessionChecked, setSessionChecked] = useState(false);
   const submitting = useRef(false);
   const [pending, setPending] = useState(false);
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
+
+  // Server Components cannot persist renewed cookies. Recover in the browser
+  // before returning to a store navigation whose access cookie has expired.
+  useEffect(() => {
+    if (new URL(window.location.href).searchParams.get("next") !== "store") return;
+    let active = true;
+    void refresh(true).then(() => { if (active) setSessionChecked(true); });
+    return () => { active = false; };
+  }, [refresh]);
+
+  useEffect(() => {
+    if (sessionChecked && status === "authenticated" && user && !user.suspended && !sessionError) {
+      // A failed verification can retain a cached user; only return after success.
+      router.replace("/store");
+    }
+  }, [sessionChecked, status, user, sessionError, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

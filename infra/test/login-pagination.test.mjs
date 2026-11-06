@@ -64,6 +64,7 @@ describe("login validation and paginated listings", () => {
         { provide: AuthService, useValue: {
           async login(username, password) { loginCalls.push({ username, password }); return user; },
           signToken: () => "token",
+          signRefreshToken: () => "refresh-token",
         } },
         { provide: ConfigService, useValue: new ConfigService({ JWT_SECRET: secret, NODE_ENV: "test" }) },
         { provide: UserUseCase, useValue: { fetchUserById: async () => user } },
