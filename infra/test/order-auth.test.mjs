@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { OrderController } from "../dist/nest/modules/order/Order.controller.js";
+import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 
 const secret = "order-authorization-test-secret";
 const order = new Order({ orderId: "order", userId: "buyer", cartId: "cart", status: "pending", items: [
@@ -21,6 +22,7 @@ describe("order endpoint authorization", () => {
     const module = await Test.createTestingModule({
       controllers: [OrderController],
       providers: [
+        UserPipe,
         { provide: ConfigService, useValue: new ConfigService({ JWT_SECRET: secret }) },
         { provide: UserUseCase, useValue: { fetchUserById: async () => new User({ id: "buyer", username: "buyer", hashedPassword: "hash", suspended }) } },
         { provide: AuthorizationUseCase, useValue: new AuthorizationUseCase({ fetchRoleByUserId: async () => missingRole ? null : new Role({ id: "role", name: "Test", permission: bits }) }) },

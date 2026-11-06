@@ -45,6 +45,13 @@ User, registration, and login responses contain only `id`, `username`, `createdA
 
 ## Data and errors
 
+Checkout and order endpoints require the `Buy` permission (or `Super`), matching
+cart access. Users without that permission receive HTTP 403 before the order use
+case runs. Orders retain their lifecycle status in the database: new checkout
+orders are `pending`, and reads preserve `pending`, `completed`, or `cancelled`.
+The order-status migration preserves existing orders as `completed`, matching
+their previous read behavior. The public order response shape is unchanged.
+
 `GET /products` and `GET /orders` accept `page` (default 1) and `limit`
 (default 20, maximum 100). Both must be positive integers. Invalid values return
 HTTP 400. Responses remain JSON arrays; a page past the end returns `[]`.

@@ -18,6 +18,7 @@ import { TypeOrmOrderRepository } from "../dist/nest/modules/order/Order.reposit
 import { InMemoryCacheManager } from "../dist/nest/common/cache/InMemoryCacheManager.js";
 import { DomainErrorFilter } from "../dist/nest/common/filters/DomainError.filter.js";
 import { createOpenApiDocument } from "../dist/nest/openapi.js";
+import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 
 describe("login validation and paginated listings", () => {
   let app, loginCalls, productQueries, orderQueries, itemQueries, cache;
@@ -61,6 +62,7 @@ describe("login validation and paginated listings", () => {
     const module = await Test.createTestingModule({
       controllers: [AuthController, ProductController, OrderController],
       providers: [
+        UserPipe,
         { provide: AuthorizationUseCase, useValue: { hasPermissions: async () => true } },
         { provide: AuthService, useValue: {
           async login(username, password) { loginCalls.push({ username, password }); return user; },
