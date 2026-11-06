@@ -4,7 +4,7 @@ import { after, before, beforeEach, describe, it } from "node:test";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
-import { OrderUseCase, ProductUseCase, UserUseCase } from "@shopeer/case";
+import { AuthorizationUseCase, OrderUseCase, ProductUseCase, UserUseCase } from "@shopeer/case";
 import { Category, User } from "@shopeer/domain";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
@@ -31,7 +31,7 @@ describe("login validation and paginated listings", () => {
   }));
   const orders = Array.from({ length: 25 }, (_, index) => ({
     id: `o${String(index).padStart(2, "0")}`, userId: index < 23 ? "alice" : "bob",
-    cartId: "cart", totalAmount: 100, createdAt: new Date("2026-01-01T00:00:00Z"),
+    cartId: "cart", status: "pending", totalAmount: 100, createdAt: new Date("2026-01-01T00:00:00Z"),
   }));
 
   before(async () => {
@@ -61,6 +61,7 @@ describe("login validation and paginated listings", () => {
     const module = await Test.createTestingModule({
       controllers: [AuthController, ProductController, OrderController],
       providers: [
+        { provide: AuthorizationUseCase, useValue: { hasPermissions: async () => true } },
         { provide: AuthService, useValue: {
           async login(username, password) { loginCalls.push({ username, password }); return user; },
           signToken: () => "token",

@@ -67,6 +67,20 @@ alone does not revoke a session. The cache controls UI only, while protected API
 routes continue to authenticate each request. Run `pnpm --filter @shopeer/web test`
 for cache and authentication middleware regression coverage.
 
+## Viewing the cart
+
+The store navigation and successful-addition summary link to `/cart`. This page
+loads the signed-in user's cart through the shared API client with `cache: "no-store"`.
+It shows product images, quantities, current unit prices, line subtotals, the VND
+total, and warnings when a quantity exceeds current stock. Empty carts link back
+to the store; failed requests offer a retry. Refresh cart fetches current prices
+and stock again. Cart viewing does not reserve inventory.
+
+Cart data stays in page-local memory and is shown only for the account that
+loaded it. Anonymous visitors go to `/login?next=cart`; login and refresh recovery
+return them to their cart. No private cart content is included in the initial
+server-rendered shell.
+
 ## Store catalog
 
 `/store` requires a valid session before rendering or fetching the catalog. Missing,

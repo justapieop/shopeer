@@ -1,19 +1,21 @@
 import { Controller, Get, Inject, Param, Post, Query } from "@nestjs/common";
 import { PaginationQueryDto } from "../../common/Pagination.dto.js";
 import { OrderUseCase } from "@shopeer/case";
-import type { Order } from "@shopeer/domain";
+import { Permission, type Order } from "@shopeer/domain";
 import type { User as DomainUser } from "@shopeer/domain";
 import { User as AuthenticatedUser } from "../../common/decorators/User.decorator.js";
 import { OrderResponseDto } from "./Order.dto.js";
 import { ApiCookieAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { ApiErrors } from "../../common/openapi/ApiErrors.js";
+import { RequirePermissions } from "../../common/decorators/RequirePermissions.decorator.js";
 
+@RequirePermissions(Permission.Buy)
 @Controller()
 @ApiTags("Orders")
 @ApiCookieAuth("cookie")
 @ApiErrors(
   { status: 401, description: "Missing, invalid, or expired JWT, or the token's user no longer exists." },
-  { status: 403, description: "The authenticated user is suspended." },
+  { status: 403, description: "The authenticated user is suspended or lacks the Buy permission." },
   { status: 500, description: "An unexpected server error occurred." },
 )
 export class OrderController {

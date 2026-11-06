@@ -24,6 +24,7 @@ import { Init1789712564933 } from "../dist/nest/modules/app/migrations/178971256
 import { CartAndOrder1790475374461 } from "../dist/nest/modules/app/migrations/1790475374461-cart-and-order.js";
 import { OrderCartId1791680000000 } from "../dist/nest/modules/app/migrations/1791680000000-order-cart-id.js";
 import { Roles1791786448696 } from "../dist/nest/modules/app/migrations/1791786448696-roles.js";
+import { OrderStatus1794000000000 } from "../dist/nest/modules/app/migrations/1794000000000-order-status.js";
 
 // Explicit opt-in. Each run owns a unique schema; existing tables are untouched.
 const databaseUrl = process.env.UOW_TEST_DATABASE_URL;
@@ -47,7 +48,7 @@ describe("Unit of Work with PostgreSQL", {
       type: "postgres", url: databaseUrl, schema,
       extra: { options: `-c search_path=${schema},public`, max: 8 },
       entities: [CartEntity, CartItemEntity, ProductEntity, CategoryEntity, UserEntity, OrderEntity, OrderItemEntity, RoleEntity],
-      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696],
+      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696, OrderStatus1794000000000],
     });
     await database.initialize();
     await database.runMigrations();
@@ -90,8 +91,40 @@ describe("Unit of Work with PostgreSQL", {
     assert.equal(stored.cartId, "cart-alice");
     assert.equal(stored.items.length, 2);
     assert.equal(stored.totalAmount, 300);
+    assert.equal(order.status, "pending");
+    assert.equal(stored.status, order.status);
+    assert.equal((await orderRepository.fetchOrdersByUserId("alice", { page: 1, limit: 20 }))[0].status, order.status);
     assert.deepEqual(await stocks(), [9, 0]);
     assert.equal(await database.getRepository(CartItemEntity).countBy({ cartId: "cart-alice" }), 0);
+  });
+
+  it("preserves persisted completed and cancelled states on order reads", async () => {
+    const order = await checkout().checkout("alice");
+    for (const status of ["completed", "cancelled"]) {
+      await database.getRepository(OrderEntity).update({ id: order.orderId }, { status });
+      assert.equal((await orderRepository.fetchOrderById(order.orderId)).status, status);
+      assert.equal((await orderRepository.fetchOrdersByUserId("alice", { page: 1, limit: 20 }))[0].status, status);
+    }
+    await assert.rejects(database.getRepository(OrderEntity).update({ id: order.orderId }, { status: "invalid" }),
+      (error) => error.driverError?.code === "23514");
+  });
+
+  it("migrates historical orders as completed and defaults new rows to pending", async () => {
+    const runner = database.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      const migration = new OrderStatus1794000000000();
+      await migration.down(runner);
+      await runner.query(`INSERT INTO "orders" ("id", "user_id", "cart_id", "total_amount") VALUES ('historical', 'alice', 'cart-alice', 100)`);
+      await migration.up(runner);
+      assert.equal((await runner.query(`SELECT "status" FROM "orders" WHERE "id" = 'historical'`))[0].status, "completed");
+      await runner.query(`INSERT INTO "orders" ("id", "user_id", "cart_id", "total_amount") VALUES ('new-default', 'alice', 'cart-alice', 100)`);
+      assert.equal((await runner.query(`SELECT "status" FROM "orders" WHERE "id" = 'new-default'`))[0].status, "pending");
+    } finally {
+      await runner.rollbackTransaction();
+      await runner.release();
+    }
   });
 
   it("adds, edits, removes and clears cart lines through the Unit of Work", async () => {

@@ -19,9 +19,10 @@ export function LoginPage() {
   const [error, setError] = useState("");
 
   // Server Components cannot persist renewed cookies. Recover in the browser
-  // before returning to a store navigation whose access cookie has expired.
+  // before returning to a protected destination whose access cookie has expired.
   useEffect(() => {
-    if (new URL(window.location.href).searchParams.get("next") !== "store") return;
+    const destination = new URL(window.location.href).searchParams.get("next");
+    if (destination !== "store" && destination !== "cart") return;
     let active = true;
     void refresh(true).then(() => { if (active) setSessionChecked(true); });
     return () => { active = false; };
@@ -30,7 +31,7 @@ export function LoginPage() {
   useEffect(() => {
     if (sessionChecked && status === "authenticated" && user && !user.suspended && !sessionError) {
       // A failed verification can retain a cached user; only return after success.
-      router.replace("/store");
+      router.replace(new URL(window.location.href).searchParams.get("next") === "cart" ? "/cart" : "/store");
     }
   }, [sessionChecked, status, user, sessionError, router]);
 
@@ -44,7 +45,8 @@ export function LoginPage() {
     try {
       const user = await login(String(data.get("username") ?? "").trim(), String(data.get("password") ?? ""));
       setUser(user);
-      router.replace(new URL(window.location.href).searchParams.get("next") === "store" ? "/store" : "/");
+      const destination = new URL(window.location.href).searchParams.get("next");
+      router.replace(destination === "store" ? "/store" : destination === "cart" ? "/cart" : "/");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Please try again.");
       submitting.current = false;

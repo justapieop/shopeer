@@ -5,6 +5,7 @@ import { TypeOrmUnitOfWork } from "../../../database/TypeOrmUnitOfWork.js";
 import { UnitOfWorkModule } from "../unitOfWork/UnitOfWork.module.js";
 import { Cuid2IdGenerator } from "../../common/Cuid2IdGenerator.js";
 import { UserModule } from "../user/User.module.js";
+import { PermissionsModule } from "../permissions/Permissions.module.js";
 import { OrderController } from "./Order.controller.js";
 import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "./Order.repository.js";
 
@@ -13,6 +14,7 @@ import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "./Order.re
     UnitOfWorkModule,
     TypeOrmModule.forFeature([OrderEntity, OrderItemEntity]),
     UserModule,
+    PermissionsModule,
   ],
   controllers: [
     OrderController,

@@ -10,6 +10,7 @@ import type { OrderRepository } from "@shopeer/case";
 import { paginationOffset, type Pagination } from "@shopeer/case";
 import {
   Column,
+  Check,
   Entity,
   In,
   PrimaryColumn,
@@ -26,6 +27,7 @@ import { ProductEntity } from "../product/Product.repository.js";
 @Entity({
   name: "orders",
 })
+@Check("CHK_orders_status", `"status" IN ('pending', 'completed', 'cancelled')`)
 export class OrderEntity {
   @PrimaryColumn({ type: "text" })
   public readonly id!: string;
@@ -35,6 +37,9 @@ export class OrderEntity {
 
   @Column({ type: "text", name: "cart_id" })
   public readonly cartId!: string;
+
+  @Column({ type: "text", default: "pending" })
+  public readonly status!: Order["status"];
 
   @Column({ type: "bigint", name: "total_amount", transformer: bigintToNumber })
   public readonly totalAmount!: number;
@@ -203,7 +208,7 @@ function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
     cartId: entity.cartId,
     userId: entity.userId,
     createdAt: entity.createdAt,
-    status: "completed",
+    status: entity.status,
     items: items.map(
       (item: OrderItemEntity) =>
         new OrderItem({
@@ -221,6 +226,7 @@ function toOrderEntity(order: Order): OrderEntity {
   return Object.assign(new OrderEntity(), {
     id: order.orderId,
     cartId: order.cartId,
+    status: order.status,
     userId: order.userId,
     totalAmount: order.totalAmount,
     createdAt: order.createdAt,

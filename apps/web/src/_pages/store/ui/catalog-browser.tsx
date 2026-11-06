@@ -72,7 +72,7 @@ export function CatalogBrowser({ products, categories, page, categoryId, categor
         <p>{products.length ? `Products ${first}–${first + products.length - 1}` : "No products to show"} <span>· Page {page}</span></p>
         <span role="status" aria-live="polite">{pending ? "Loading products…" : "Sorted by name"}</span>
       </div>
-      {cart && <p className={styles["cartSummary"]} role="status" aria-live="polite">Cart: {cart.totalQuantity} {cart.totalQuantity === 1 ? "item" : "items"} · {currency.format(cart.totalAmount)}</p>}
+      {cart && <p className={styles["cartSummary"]} role="status" aria-live="polite">Cart: {cart.totalQuantity} {cart.totalQuantity === 1 ? "item" : "items"} · {currency.format(cart.totalAmount)} · <Link href="/cart" prefetch={false} className={styles["textLink"]}>View cart</Link></p>}
       {products.length ? (
         <ul className={styles["grid"]} data-pending={pending || undefined}>
           {products.map((product, index) => {
