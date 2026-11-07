@@ -76,6 +76,21 @@ total, and warnings when a quantity exceeds current stock. Empty carts link back
 to the store; failed requests offer a retry. Refresh cart fetches current prices
 and stock again. Cart viewing does not reserve inventory.
 
+Cart quantities can be edited with Update, products can be removed, and Place
+order submits the current cart to `POST /checkout`. Unsaved quantities and
+unavailable stock block checkout. Cart controls are disabled during a write,
+and double submission is prevented in the page model as well as the buttons.
+The server response supplies the final totals; successful checkout shows an
+order reference and receipt, then reloads the cart. It does not claim payment
+has completed.
+
+HTTP 409 conflicts and removed-line 404 responses reload the latest cart for
+review without replaying the write. An uncertain network/server response blocks
+further writes until the buyer explicitly refreshes the cart. If reloading fails
+after a successful checkout, the order confirmation remains visible. In-flight
+reads cannot overwrite newer results, and changing accounts creates a separate
+page model.
+
 Cart data stays in page-local memory and is shown only for the account that
 loaded it. Anonymous visitors go to `/login?next=cart`; login and refresh recovery
 return them to their cart. No private cart content is included in the initial

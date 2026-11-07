@@ -13,10 +13,10 @@
 /* At 1200px: 864px of products + 48px gap + 288px summary = 1200px. */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 48px; align-items: start; }
 .products { min-width: 0; }
-.columns { display: grid; grid-template-columns: minmax(0, 1fr) 76px 120px; gap: 24px; padding-block: 12px; color: var(--muted); font-size: 12px; }
+.columns { display: grid; grid-template-columns: minmax(0, 1fr) 144px 120px; gap: 24px; padding-block: 12px; color: var(--muted); font-size: 12px; }
 .columns span:not(:first-child) { text-align: right; }
 .list { list-style: none; padding: 0; margin: 0; }
-.item { display: grid; grid-template-columns: 88px minmax(0, 1fr) 76px 120px; gap: 24px; align-items: center; padding-block: 24px; border-top: 1px solid var(--separator); }
+.item { display: grid; grid-template-columns: 88px minmax(0, 1fr) 144px 120px; gap: 24px; align-items: center; padding-block: 24px; border-top: 1px solid var(--separator); }
 .image { width: 88px; height: 88px; background: var(--surface-secondary); border-radius: 6px; overflow: hidden; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
 .image img { width: 100%; height: 100%; object-fit: cover; }
 .identity { min-width: 0; }
@@ -26,6 +26,18 @@
 .quantity, .subtotal, .summary dd, .emptyTotal { font-variant-numeric: tabular-nums; }
 .quantity, .subtotal { text-align: right; font-size: 14px; font-weight: 500; }
 .mobileLabel { display: none; }
+.quantityGroup { width: 144px; height: 40px; border-radius: 6px; box-shadow: none; }
+.quantityInput { width: 48px; min-width: 0; text-align: center; font-variant-numeric: tabular-nums; }
+.quantity form > button, .quantity > button { min-height: 36px; border-radius: 6px; font-size: 12px; }
+.quantity form { display: flex; flex-direction: column; align-items: end; }
+.checkout { min-height: 44px; border-radius: 6px; box-shadow: none; background: var(--foreground); color: var(--background); margin-bottom: 12px; }
+.receipt { border-block: 1px solid var(--separator); padding-block: 24px; margin-bottom: 24px; }
+.receipt h2 { font-size: 24px; font-weight: 500; margin: 0 0 12px; }
+.receipt p, .receipt li { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.receipt ul { list-style: none; padding: 0; max-width: 640px; }
+.receipt li { display: flex; justify-content: space-between; gap: 24px; padding-block: 8px; }
+.receipt li span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.notice { margin: 0 0 24px; font-size: 14px; line-height: 1.5; }
 .summary { border-top: 1px solid var(--separator); padding-top: 24px; }
 .summary h2 { font-size: 18px; font-weight: 500; line-height: 1.5; margin: 0 0 24px; }
 .summary dl { margin: 0; }
@@ -64,6 +76,8 @@
   .identity { grid-column: 2 / -1; }
   .identity h2 { font-size: 16px; }
   .quantity { grid-column: 2; text-align: left; font-weight: 400; }
+  .quantity form { align-items: start; }
+  .quantityGroup { width: 128px; }
   .mobileLabel { display: inline; color: var(--muted); }
   .subtotal { grid-column: 3; }
   .summary { max-width: none; }
