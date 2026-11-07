@@ -96,6 +96,21 @@ loaded it. Anonymous visitors go to `/login?next=cart`; login and refresh recove
 return them to their cart. No private cart content is included in the initial
 server-rendered shell.
 
+## Buyer and seller orders
+
+`/orders` lists the signed-in buyer's purchases, newest first. Each order links
+to `/orders/[orderId]`, including directly from the checkout receipt. The page
+shows the persisted status, checkout-time product names and prices, quantities,
+line subtotals, and total. `/seller/orders` and `/seller/orders/[orderId]` show
+only the current seller's lines and their subtotal. Both views include empty,
+loading, permission-denied, not-found, retry, refresh, and pagination states.
+Private reads use `cache: "no-store"`; changing accounts or views discards old
+page data, and login returns to the requested allowlisted order page.
+
+API authorization requires `Buy` for buyer views and `Sell` for seller views.
+The backend uses the authenticated identity; URL query parameters cannot select
+another buyer or seller. Seeing an order reference does not grant access.
+
 ## Store catalog
 
 `/store` requires a valid session before rendering or fetching the catalog. Missing,

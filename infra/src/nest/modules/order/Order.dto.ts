@@ -2,6 +2,10 @@ import type { Order, OrderItem } from "@shopeer/domain";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class OrderItemResponseDto {
+  @ApiProperty({ type: String, description: "Product name captured at checkout." })
+  public readonly name!: string;
+  @ApiProperty({ type: String })
+  public readonly imageUrl!: string;
   @ApiProperty({ type: String, example: "product-1" })
   public readonly productId!: string;
   @ApiProperty({ type: "integer", format: "int64", description: "Unit price at purchase time, in VND.", example: 25000 })
@@ -14,6 +18,8 @@ export class OrderItemResponseDto {
   public static from(item: OrderItem): OrderItemResponseDto {
     return {
       productId: item.productId,
+      name: item.name,
+      imageUrl: item.imageUrl,
       unitPrice: item.unitPrice,
       quantity: item.quantity,
       subtotal: item.subtotal,
@@ -22,6 +28,8 @@ export class OrderItemResponseDto {
 }
 
 export class OrderResponseDto {
+  @ApiProperty({ enum: ["pending", "completed", "cancelled"] })
+  public readonly status!: Order["status"];
   @ApiProperty({ type: String, example: "order-1" })
   public readonly orderId!: string;
   @ApiProperty({ type: String, format: "date-time", example: "2026-10-20T08:00:00.000Z" })
@@ -34,6 +42,7 @@ export class OrderResponseDto {
   public static from(order: Order): OrderResponseDto {
     return {
       orderId: order.orderId,
+      status: order.status,
       createdAt: order.createdAt,
       totalAmount: order.totalAmount,
       items: order.items.map(OrderItemResponseDto.from),

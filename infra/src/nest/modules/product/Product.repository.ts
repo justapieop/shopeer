@@ -11,6 +11,8 @@ import { requireTransaction } from "../../../database/requireTransaction.js";
   name: "products",
 })
 export class ProductEntity {
+  @Column({ type: "text", name: "seller_id", nullable: true })
+  public readonly sellerId!: string | null;
   @PrimaryColumn({ type: "text", })
   public readonly id!: string;
 
@@ -50,6 +52,13 @@ export class TypeOrmProductRepository implements ProductRepository {
     return toDomain(entity);
   }
 
+  public async assignSeller(productId: string, sellerId: string): Promise<boolean> {
+    requireTransaction(this.productRepository.manager);
+    const result = await this.productRepository.update({ id: productId }, { sellerId });
+    if (result.affected) this.onSaved?.();
+    return (result.affected ?? 0) > 0;
+  }
+
   public async fetchProductById(productId: string): Promise<Product | null> {
     const entity: ProductEntity | null = await this.productRepository.findOneBy({ id: productId, });
     return entity ? toDomain(entity) : null;
@@ -82,6 +91,7 @@ export class TypeOrmProductRepository implements ProductRepository {
 
 function toDomain(entity: ProductEntity): Product {
   return new Product({
+    sellerId: entity.sellerId,
     productId: entity.id,
     name: entity.name,
     description: entity.description,
@@ -94,6 +104,7 @@ function toDomain(entity: ProductEntity): Product {
 
 function toEntity(product: Product): ProductEntity {
   return Object.assign(new ProductEntity(), {
+    sellerId: product.sellerId,
     id: product.productId,
     name: product.name,
     description: product.description,

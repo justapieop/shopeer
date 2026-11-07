@@ -16,7 +16,7 @@ import {
   User,
   UsernameAlreadyExistsError,
   ConflictError,
-  type Order,
+  Order,
 } from "@shopeer/domain";
 import type { CartItemRepository, CartRepository, CategoryRepository, IdGenerator, OrderRepository, ProductRepository, RepositorySet, RoleRepository, UnitOfWork, UserRepository } from "../src/ports.js";
 import { paginationOffset, type Pagination } from "../src/pagination.js";
@@ -90,6 +90,12 @@ export class InMemoryRoleRepository implements RoleRepository {
 }
 
 export class InMemoryProductRepository implements ProductRepository {
+  public assignSeller(productId: string, sellerId: string): boolean {
+    const product = this.products.get(productId);
+    if (!product) return false;
+    this.save(new Product({ ...productDetails(product), sellerId }));
+    return true;
+  }
   public readonly products: Map<string, Product> = new Map();
 
   public save(product: Product): Product {
@@ -202,6 +208,16 @@ export class InMemoryCartItemRepository implements CartItemRepository {
 
 /** Follows the placeOrder contract in memory (single-threaded, so no locking needed). */
 export class InMemoryOrderRepository implements OrderRepository {
+  public fetchOrderBySellerId(sellerId: string, orderId: string): Order | null {
+    const order = this.orders.get(orderId);
+    const items = order?.items.filter((item) => item.sellerId === sellerId) ?? [];
+    return order && items.length ? new Order({ orderId: order.orderId, cartId: order.cartId, userId: order.userId, status: order.status, createdAt: order.createdAt, items }) : null;
+  }
+  public fetchOrdersBySellerId(sellerId: string, pagination: Pagination): Order[] {
+    return [...this.orders.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.orderId.localeCompare(a.orderId))
+      .map((order) => this.fetchOrderBySellerId(sellerId, order.orderId)).filter((order): order is Order => order !== null)
+      .slice(paginationOffset(pagination), paginationOffset(pagination) + pagination.limit);
+  }
   public readonly orders: Map<string, Order> = new Map();
 
   public constructor(
@@ -294,6 +310,7 @@ export class InMemoryUnitOfWork implements UnitOfWork {
 
 export function productDetails(product: Product) {
   return {
+    sellerId: product.sellerId,
     productId: product.productId,
     name: product.name,
     description: product.description,

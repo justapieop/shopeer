@@ -43,9 +43,30 @@ on login and `-b` on subsequent requests. REST Client examples use its cookie ja
 
 User, registration, and login responses contain only `id`, `username`, `createdAt`, and `suspended`. Password hashes and the domain object's `details` are excluded.
 
+## Order views and product sellers
+
+Buyer routes `GET /orders` and `GET /orders/:orderId` require `Buy` and return only
+orders purchased by the authenticated user. Seller routes `GET /seller/orders`
+and `GET /seller/orders/:orderId` require `Sell` and return only lines assigned to
+that seller at checkout, with a total for those lines only. Lists accept `page`
+and `limit` and sort newest first. A reference outside the caller's ownership
+returns 404. Super satisfies the permission guard but still receives only its
+own buyer/seller projection; these are not administrative all-order routes.
+Order reads set `Cache-Control: no-store` and include the persisted `status`,
+product-name/image snapshots, quantities and purchase prices.
+
+`PUT /admin/products/:productId/seller` requires `Super` and a JSON body
+`{ "sellerId": "user-id" }`. The target must exist, be active, and have `Sell`.
+The transaction updates only product ownership, preserving stock and price.
+Existing products and historical order lines remain unassigned after the seller
+migration. Assigning or reassigning a product affects future orders only; it does
+not reveal historical orders to the new seller. Historical names/images are
+backfilled from existing products where available. Checkout rejects and rolls
+back a concurrent seller reassignment rather than saving stale ownership.
+
 ## Data and errors
 
-Checkout and order endpoints require the `Buy` permission (or `Super`), matching
+Checkout and buyer order endpoints require the `Buy` permission (or `Super`), matching
 cart access. Users without that permission receive HTTP 403 before the order use
 case runs. Orders retain their lifecycle status in the database: new checkout
 orders are `pending`, and reads preserve `pending`, `completed`, or `cancelled`.

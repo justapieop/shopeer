@@ -18,6 +18,7 @@ export class Product extends Domain {
     public readonly categoryId!: string;
     public readonly stock!: number;
     public readonly imageUrl!: string;
+    public readonly sellerId: string | null;
 
     public constructor(protected readonly details: ProductDetails) {
         super(details);
@@ -28,9 +29,11 @@ export class Product extends Domain {
         this.categoryId = details.categoryId;
         this.stock = details.stock;
         this.imageUrl = details.imageUrl;
+        this.sellerId = details.sellerId ?? null;
     }
 
     public validate(): InvalidParametersError | null {
+        if (this.details.sellerId != null && isBlankString(this.details.sellerId)) return new InvalidParametersError("sellerId must not be blank");
         if (isBlankString(this.details.productId)) {
             return new InvalidParametersError("productId must not be blank");
         }
@@ -77,6 +80,7 @@ export class Product extends Domain {
 }
 
 export interface ProductDetails extends DomainDetails {
+    sellerId?: string | null;
     productId: string;
     name: string;
     description: string;

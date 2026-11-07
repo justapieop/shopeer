@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Param, Post, Query } from "@nestjs/common";
+import { Controller, Get, Header, Inject, Param, Post, Query } from "@nestjs/common";
 import { PaginationQueryDto } from "../../common/Pagination.dto.js";
 import { OrderUseCase } from "@shopeer/case";
 import { Permission, type Order } from "@shopeer/domain";
@@ -37,6 +37,7 @@ export class OrderController {
   }
 
   @Get("/orders")
+  @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "List the current user's orders", description: "Returns a page of orders sorted newest first, then by ID descending. Defaults to page 1 with 20 results; maximum limit is 100." })
   @ApiOkResponse({ type: [OrderResponseDto] })
   @ApiErrors({ status: 400, description: "Invalid pagination parameters." })
@@ -46,6 +47,7 @@ export class OrderController {
   }
 
   @Get("/orders/:orderId")
+  @Header("Cache-Control", "no-store")
   @ApiOperation({ summary: "Get one of the current user's orders" })
   @ApiParam({ name: "orderId", type: String, example: "order-1" })
   @ApiOkResponse({ type: OrderResponseDto })

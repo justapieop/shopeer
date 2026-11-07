@@ -52,6 +52,12 @@ export class OrderEntity {
   name: "order_items",
 })
 export class OrderItemEntity {
+  @Column({ type: "text", name: "seller_id", nullable: true })
+  public readonly sellerId!: string | null;
+  @Column({ type: "text", name: "product_name", default: "Product" })
+  public readonly name!: string;
+  @Column({ type: "text", name: "image_url", default: "" })
+  public readonly imageUrl!: string;
   @PrimaryColumn({ type: "text" })
   public readonly id!: string;
 
@@ -108,6 +114,7 @@ export class TypeOrmOrderRepository implements OrderRepository {
           productId: item.productId,
           quantity: item.quantity,
         })
+        .andWhere(`"seller_id" IS NOT DISTINCT FROM :sellerId`, { sellerId: item.sellerId })
         .execute();
       if (result.affected === 0) {
         outOfStock.push(item.productId);
@@ -173,6 +180,23 @@ export class TypeOrmOrderRepository implements OrderRepository {
     }
     return entities.map((entity) => toDomain(entity, itemsByOrder.get(entity.id) ?? []));
   }
+
+  public async fetchOrdersBySellerId(sellerId: string, pagination: Pagination): Promise<Order[]> {
+    const entities = await this.orderRepository.createQueryBuilder("placed")
+      .where(`EXISTS (SELECT 1 FROM "order_items" AS seller_line WHERE seller_line."order_id" = placed."id" AND seller_line."seller_id" = :sellerId)`, { sellerId })
+      .orderBy("placed.createdAt", "DESC").addOrderBy("placed.id", "DESC")
+      .skip(paginationOffset(pagination)).take(pagination.limit).getMany();
+    if (!entities.length) return [];
+    const items = await this.orderItemRepository.find({ where: { orderId: In(entities.map((order) => order.id)), sellerId }, order: { productId: "ASC" } });
+    return entities.map((order) => toDomain(order, items.filter((item) => item.orderId === order.id)));
+  }
+
+  public async fetchOrderBySellerId(sellerId: string, orderId: string): Promise<Order | null> {
+    const items = await this.orderItemRepository.find({ where: { orderId, sellerId }, order: { productId: "ASC" } });
+    if (!items.length) return null;
+    const order = await this.orderRepository.findOneBy({ id: orderId });
+    return order ? toDomain(order, items) : null;
+  }
 }
 
 /**
@@ -216,6 +240,9 @@ function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
           orderItemId: item.id,
           orderId: item.orderId,
           productId: item.productId,
+          sellerId: item.sellerId,
+          name: item.name,
+          imageUrl: item.imageUrl,
           unitPrice: item.unitPrice,
           quantity: item.quantity,
         }),
@@ -236,6 +263,9 @@ function toOrderEntity(order: Order): OrderEntity {
 
 function toOrderItemEntity(item: OrderItem): OrderItemEntity {
   return Object.assign(new OrderItemEntity(), {
+    sellerId: item.sellerId,
+    name: item.name,
+    imageUrl: item.imageUrl,
     id: item.orderItemId,
     orderId: item.orderId,
     productId: item.productId,

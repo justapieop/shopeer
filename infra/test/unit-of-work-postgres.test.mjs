@@ -25,6 +25,7 @@ import { CartAndOrder1790475374461 } from "../dist/nest/modules/app/migrations/1
 import { OrderCartId1791680000000 } from "../dist/nest/modules/app/migrations/1791680000000-order-cart-id.js";
 import { Roles1791786448696 } from "../dist/nest/modules/app/migrations/1791786448696-roles.js";
 import { OrderStatus1794000000000 } from "../dist/nest/modules/app/migrations/1794000000000-order-status.js";
+import { OrderSellers1794050000000 } from "../dist/nest/modules/app/migrations/1794050000000-order-sellers.js";
 
 // Explicit opt-in. Each run owns a unique schema; existing tables are untouched.
 const databaseUrl = process.env.UOW_TEST_DATABASE_URL;
@@ -48,7 +49,7 @@ describe("Unit of Work with PostgreSQL", {
       type: "postgres", url: databaseUrl, schema,
       extra: { options: `-c search_path=${schema},public`, max: 8 },
       entities: [CartEntity, CartItemEntity, ProductEntity, CategoryEntity, UserEntity, OrderEntity, OrderItemEntity, RoleEntity],
-      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696, OrderStatus1794000000000],
+      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696, OrderStatus1794000000000, OrderSellers1794050000000],
     });
     await database.initialize();
     await database.runMigrations();
@@ -84,6 +85,62 @@ describe("Unit of Work with PostgreSQL", {
     const products = await database.getRepository(ProductEntity).find({ order: { id: "ASC" } });
     return products.map((product) => product.stock);
   }
+
+  it("keeps seller projections private and snapshots ownership and product identity", async () => {
+    await database.query(`INSERT INTO "users" ("id", "username", "hashed_password", "created_at", "suspended") VALUES ('seller-a', 'sellera', 'hash', now(), false), ('seller-b', 'sellerb', 'hash', now(), false)`);
+    assert.equal((await database.getRepository(ProductEntity).findOneByOrFail({ id: "a-plenty" })).sellerId, null);
+    await database.getRepository(ProductEntity).update({ id: "a-plenty" }, { sellerId: "seller-a" });
+    await database.getRepository(ProductEntity).update({ id: "z-last" }, { sellerId: "seller-b" });
+    const order = await checkout().checkout("alice");
+    const a = await orderRepository.fetchOrderBySellerId("seller-a", order.orderId);
+    const b = await orderRepository.fetchOrderBySellerId("seller-b", order.orderId);
+    assert.deepEqual(a.items.map((item) => item.productId), ["a-plenty"]);
+    assert.deepEqual(b.items.map((item) => item.productId), ["z-last"]);
+    assert.equal(a.totalAmount, 100); assert.equal(b.totalAmount, 200);
+    assert.equal((await orderRepository.fetchOrdersBySellerId("seller-a", { page: 1, limit: 20 }))[0].totalAmount, 100);
+    assert.deepEqual(await orderRepository.fetchOrdersBySellerId("alice", { page: 1, limit: 20 }), []);
+    await database.getRepository(ProductEntity).update({ id: "a-plenty" }, { sellerId: "seller-b", name: "Changed", price: 999 });
+    assert.equal((await orderRepository.fetchOrderBySellerId("seller-a", order.orderId)).items[0].name, "Plenty");
+    assert.deepEqual((await orderRepository.fetchOrderBySellerId("seller-b", order.orderId)).items.map((item) => item.productId), ["z-last"]);
+    assert.equal((await orderRepository.fetchOrderById(order.orderId)).totalAmount, 300);
+  });
+
+  it("rolls checkout back if a product seller changes after its snapshot is read", async () => {
+    const work = { execute: (operation) => unitOfWork.execute(async (repositories) => {
+      const fetch = repositories.products.fetchProductsByIds.bind(repositories.products);
+      repositories.products.fetchProductsByIds = async (ids) => {
+        const result = await fetch(ids);
+        await database.getRepository(ProductEntity).update({ id: "a-plenty" }, { sellerId: "bob" });
+        return result;
+      };
+      return operation(repositories);
+    }) };
+    await assert.rejects(checkout(work).checkout("alice"), OutOfStockError);
+    assert.equal(await database.getRepository(OrderEntity).count(), 0);
+    assert.deepEqual(await stocks(), [10, 1]);
+    assert.equal(await database.getRepository(CartItemEntity).countBy({ cartId: "cart-alice" }), 2);
+  });
+
+  it("does not grant seller access to an unassigned order after later product assignment", async () => {
+    const order = await checkout().checkout("alice");
+    await database.getRepository(ProductEntity).update({ id: "a-plenty" }, { sellerId: "bob" });
+    assert.equal(await orderRepository.fetchOrderBySellerId("bob", order.orderId), null);
+    assert.deepEqual(await orderRepository.fetchOrdersBySellerId("bob", { page: 1, limit: 20 }), []);
+  });
+
+  it("migrates historical products and orders without inventing seller ownership", async () => {
+    const order = await checkout().checkout("alice");
+    const runner = database.createQueryRunner();
+    await runner.connect(); await runner.startTransaction();
+    try {
+      const migration = new OrderSellers1794050000000();
+      await migration.down(runner); await migration.up(runner);
+      const rows = await runner.query(`SELECT "seller_id", "product_name" FROM "order_items" WHERE "order_id" = $1 ORDER BY "product_id"`, [order.orderId]);
+      assert.deepEqual(rows.map((row) => row.seller_id), [null, null]);
+      assert.deepEqual(rows.map((row) => row.product_name), ["Plenty", "Last"]);
+      assert.ok((await runner.query(`SELECT "seller_id" FROM "products"`)).every((row) => row.seller_id === null));
+    } finally { await runner.rollbackTransaction(); await runner.release(); }
+  });
 
   // Hold one operation after it owns the parent lock. Confirm PostgreSQL has
   // actually blocked the other operation before releasing it (no timing guess).

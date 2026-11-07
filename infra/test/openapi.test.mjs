@@ -4,7 +4,7 @@ import { after, before, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
 import { ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { AuthorizationUseCase, CartUseCase, OrderUseCase, ProductUseCase, UserUseCase } from "@shopeer/case";
+import { AuthorizationUseCase, CartUseCase, OrderUseCase, ProductUseCase, ProductOwnershipUseCase, UserUseCase } from "@shopeer/case";
 import { User } from "@shopeer/domain";
 import request from "supertest";
 import { createOpenApiDocument, setupOpenApi } from "../dist/nest/openapi.js";
@@ -17,6 +17,8 @@ import { UserController } from "../dist/nest/modules/user/User.controller.js";
 import { InMemoryCacheManager } from "../dist/nest/common/cache/InMemoryCacheManager.js";
 
 import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
+import { SellerOrderController } from "../dist/nest/modules/order/SellerOrder.controller.js";
+import { ProductOwnershipController } from "../dist/nest/modules/product/ProductOwnership.controller.js";
 
 const routes = [
   ["post", "/auth/register", "201"], ["post", "/auth/login", "201"],
@@ -26,6 +28,8 @@ const routes = [
   ["get", "/cart", "200"], ["delete", "/cart", "200"], ["post", "/cart/items", "200"],
   ["patch", "/cart/items/{productId}", "200"], ["delete", "/cart/items/{productId}", "200"],
   ["post", "/checkout", "201"], ["get", "/orders", "200"], ["get", "/orders/{orderId}", "200"],
+  ["get", "/seller/orders", "200"], ["get", "/seller/orders/{orderId}", "200"],
+  ["put", "/admin/products/{productId}/seller", "200"],
 ];
 
 const storedUser = new User({ id: "user-1", username: "alice", hashedPassword: "secret-hash", suspended: false });
@@ -35,9 +39,10 @@ describe("OpenAPI documentation", () => {
 
   before(async () => {
     const module = await Test.createTestingModule({
-      controllers: [AuthController, CartController, OrderController, ProductController, CategoryController, UserController],
+      controllers: [AuthController, CartController, OrderController, SellerOrderController, ProductOwnershipController, ProductController, CategoryController, UserController],
       providers: [
         UserPipe,
+        { provide: ProductOwnershipUseCase, useValue: {} },
         { provide: AuthorizationUseCase, useValue: { hasPermissions: async () => true } },
         { provide: AuthService, useValue: { registration: async () => storedUser, login: async () => storedUser, signToken: () => "signed-jwt", signRefreshToken: () => "signed-refresh-jwt" } },
         { provide: CartUseCase, useValue: {} },
@@ -84,7 +89,7 @@ describe("OpenAPI documentation", () => {
 
   it("documents exactly the production operations with summaries, tags, and response schemas", () => {
     const documented = Object.entries(document.paths).flatMap(([path, item]) =>
-      Object.keys(item).filter((method) => ["get", "post", "patch", "delete"].includes(method)).map((method) => `${method} ${path}`),
+      Object.keys(item).filter((method) => ["get", "post", "put", "patch", "delete"].includes(method)).map((method) => `${method} ${path}`),
     );
     assert.deepEqual(documented.sort(), routes.map(([method, path]) => `${method} ${path}`).sort());
     const operationIds = new Set();
@@ -106,7 +111,7 @@ describe("OpenAPI documentation", () => {
     assert.equal(document.components.securitySchemes.bearer, undefined);
     for (const [method, path] of routes) {
       const operation = document.paths[path][method];
-      const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path === "/checkout" || path === "/user/me";
+      const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path.startsWith("/seller/") || path.startsWith("/admin/") || path === "/checkout" || path === "/user/me";
       if (protectedRoute) {
         assert.deepEqual(operation.security, [{ cookie: [] }]);
         assert.ok(operation.responses["401"]);

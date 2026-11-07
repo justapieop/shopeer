@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { login } from "../api/login";
+import { returnDestination } from "../lib/return-destination";
 import { useSession } from "@/entities/session";
 import styles from "./login-page.module.css";
 
@@ -22,7 +23,7 @@ export function LoginPage() {
   // before returning to a protected destination whose access cookie has expired.
   useEffect(() => {
     const destination = new URL(window.location.href).searchParams.get("next");
-    if (destination !== "store" && destination !== "cart") return;
+    if (!["store", "cart", "orders", "seller-orders"].includes(destination ?? "")) return;
     let active = true;
     void refresh(true).then(() => { if (active) setSessionChecked(true); });
     return () => { active = false; };
@@ -31,7 +32,7 @@ export function LoginPage() {
   useEffect(() => {
     if (sessionChecked && status === "authenticated" && user && !user.suspended && !sessionError) {
       // A failed verification can retain a cached user; only return after success.
-      router.replace(new URL(window.location.href).searchParams.get("next") === "cart" ? "/cart" : "/store");
+      router.replace(returnDestination(new URL(window.location.href).searchParams));
     }
   }, [sessionChecked, status, user, sessionError, router]);
 
@@ -45,8 +46,7 @@ export function LoginPage() {
     try {
       const user = await login(String(data.get("username") ?? "").trim(), String(data.get("password") ?? ""));
       setUser(user);
-      const destination = new URL(window.location.href).searchParams.get("next");
-      router.replace(destination === "store" ? "/store" : destination === "cart" ? "/cart" : "/");
+      router.replace(returnDestination(new URL(window.location.href).searchParams));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Please try again.");
       submitting.current = false;

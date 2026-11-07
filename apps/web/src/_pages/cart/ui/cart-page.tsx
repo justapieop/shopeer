@@ -39,7 +39,7 @@ export function CartPage() {
       <header className={styles["header"]}>
         <Link href="/" className={styles["wordmark"]} aria-label="Shopeer home">shopeer</Link>
         <nav aria-label="Main navigation">
-          <Link href="/" prefetch={false}>Home</Link><Link href="/store" prefetch={false}>Store</Link><Link href="/cart" aria-current="page">Cart</Link>
+          <Link href="/" prefetch={false}>Home</Link><Link href="/store" prefetch={false}>Store</Link><Link href="/cart" aria-current="page">Cart</Link><Link href="/orders" prefetch={false}>Orders</Link>
         </nav>
         <SessionStatus />
       </header>
@@ -50,8 +50,9 @@ export function CartPage() {
         </div>
         {state.receipt && userId && <section className={styles["receipt"]} role="status">
           <h2>Order placed</h2><p>Order reference: {state.receipt.order.orderId}</p>
-          <ul>{state.receipt.order.items.map((item) => <li key={item.productId}>{state.receipt?.names[item.productId] ?? "Product"} × {item.quantity} <span>{currency.format(item.subtotal)}</span></li>)}</ul>
+          <ul>{state.receipt.order.items.map((item) => <li key={item.productId}>{item.name || state.receipt?.names[item.productId] || "Product"} × {item.quantity} <span>{currency.format(item.subtotal)}</span></li>)}</ul>
           <p>Total: <strong>{currency.format(state.receipt.order.totalAmount)}</strong></p>
+          <Link href={`/orders/${encodeURIComponent(state.receipt.order.orderId)}`} prefetch={false}>View this order</Link>
         </section>}
         {userId && state.error && cart && <div className={styles["notice"]} role="alert"><p>{state.error}</p>{state.requiresReview && <Button variant="secondary" isDisabled={state.busy || state.loading} onPress={() => { void store.load(); }}>Refresh cart to review</Button>}</div>}
         {state.busy && <p role="status" className={styles["notice"]}>Updating your cart…</p>}

@@ -110,6 +110,7 @@ describe("TypeOrmUnitOfWork", () => {
     ["cart item deletion", CartItemEntity, TypeOrmCartItemRepository, "deleteCartItem", ["cart", "product"]],
     ["cart clearing", CartItemEntity, TypeOrmCartItemRepository, "deleteCartItemsByCartId", ["cart"]],
     ["product save", ProductEntity, TypeOrmProductRepository, "save", [{}]],
+    ["product seller assignment", ProductEntity, TypeOrmProductRepository, "assignSeller", ["product", "seller"]],
     ["category save", CategoryEntity, TypeOrmCategoryRepository, "save", [{}]],
     ["user save", UserEntity, TypeOrmUserRepository, "save", [{}]],
     ["user creation", UserEntity, TypeOrmUserRepository, "create", [{}]],

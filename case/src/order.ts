@@ -98,6 +98,9 @@ export class OrderUseCase {
             orderItemId: this.idGenerator.generate(),
             orderId,
             productId: item.productId,
+            sellerId: productsById.get(item.productId)!.sellerId,
+            name: productsById.get(item.productId)!.name,
+            imageUrl: productsById.get(item.productId)!.imageUrl,
             // Snapshot of today's price: later price changes do not alter this order.
             unitPrice: productsById.get(item.productId)!.price,
             quantity: item.quantity,
@@ -125,6 +128,17 @@ export class OrderUseCase {
       throw new NotFoundError(`Order ${orderId} not found`);
     }
 
+    return order;
+  }
+
+  public async listSellerOrders(sellerId: string, pagination: Pagination = { page: 1, limit: 20 }): Promise<Order[]> {
+    paginationOffset(pagination);
+    return this.orderRepository.fetchOrdersBySellerId(sellerId, pagination);
+  }
+
+  public async getSellerOrder(sellerId: string, orderId: string): Promise<Order> {
+    const order = await this.orderRepository.fetchOrderBySellerId(sellerId, orderId);
+    if (!order) throw new NotFoundError(`Order ${orderId} not found`);
     return order;
   }
 }

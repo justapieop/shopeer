@@ -60,6 +60,8 @@ export interface CategoryRepository {
 }
 
 export interface OrderRepository {
+  fetchOrdersBySellerId(sellerId: string, pagination: Pagination): Order[] | Promise<Order[]>;
+  fetchOrderBySellerId(sellerId: string, orderId: string): Order | null | Promise<Order | null>;
   /**
    * Persists a new order created from the cart `cartId` inside UnitOfWork.execute:
    *
@@ -98,6 +100,7 @@ export interface UnitOfWork<TRepositories = RepositorySet> {
 }
 
 export interface ProductRepository {
+  assignSeller(productId: string, sellerId: string): boolean | Promise<boolean>;
   save(product: Product): Product | Promise<Product>;
   fetchProductById(productId: string): Product | null | Promise<Product | null>;
   fetchProductsByIds(productIds: string[]): Product[] | Promise<Product[]>;

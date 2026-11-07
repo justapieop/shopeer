@@ -160,6 +160,8 @@ describe("OrderUseCase", () => {
         placeOrder: vi.fn(() => { throw new Error("write outside transaction"); }),
         fetchOrderById: orders.fetchOrderById.bind(orders),
         fetchOrdersByUserId: orders.fetchOrdersByUserId.bind(orders),
+        fetchOrdersBySellerId: orders.fetchOrdersBySellerId.bind(orders),
+        fetchOrderBySellerId: orders.fetchOrderBySellerId.bind(orders),
       };
       const carts = new InMemoryCartRepository();
       const cart = await cartUseCase.getCart("alice");

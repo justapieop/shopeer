@@ -66,9 +66,29 @@ export interface paths {
         put?: never;
         /**
          * Log in
-         * @description Verifies credentials and sets the HttpOnly access_token cookie used by protected routes. The token is not returned in JSON.
+         * @description Verifies credentials and sets HttpOnly access_token (one hour) and refresh_token (seven days) cookies. Tokens are not returned in JSON.
          */
         post: operations["AuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh access token
+         * @description Validates the refresh_token cookie and the current user, then sets a new one-hour access_token cookie. The refresh token keeps its original expiry.
+         */
+        post: operations["AuthController_refresh"];
         delete?: never;
         options?: never;
         head?: never;
@@ -105,6 +125,26 @@ export interface paths {
         /** Get a product */
         get: operations["ProductController_getProduct"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{productId}/seller": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Assign a product seller
+         * @description Super only. Target must be an active user with Sell permission. Only future checkout lines use the new assignment; historical order ownership never changes.
+         */
+        put: operations["ProductOwnershipController_assign"];
         post?: never;
         delete?: never;
         options?: never;
@@ -248,6 +288,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/seller/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List orders containing the seller's placed products
+         * @description Only this seller's checkout-time lines and subtotal are returned. Newest first, paginated.
+         */
+        get: operations["SellerOrderController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View the seller's portion of a placed order */
+        get: operations["SellerOrderController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -335,6 +412,13 @@ export interface components {
             /** @example https://example.com/notebook.jpg */
             imageUrl: string;
         };
+        AssignSellerDto: {
+            sellerId: string;
+        };
+        ProductSellerResponseDto: {
+            productId: string;
+            sellerId: string;
+        };
         CategoryResponseDto: {
             /** @example category-1 */
             categoryId: string;
@@ -398,6 +482,9 @@ export interface components {
             quantity: number;
         };
         OrderItemResponseDto: {
+            /** @description Product name captured at checkout. */
+            name: string;
+            imageUrl: string;
             /** @example product-1 */
             productId: string;
             /**
@@ -416,6 +503,8 @@ export interface components {
             subtotal: number;
         };
         OrderResponseDto: {
+            /** @enum {string} */
+            status: "pending" | "completed" | "cancelled";
             /** @example order-1 */
             orderId: string;
             /**
@@ -595,7 +684,7 @@ export interface operations {
             /** @description The authenticated user. The current login endpoint responds with HTTP 201. */
             201: {
                 headers: {
-                    /** @description JWT cookie lasting one hour; Secure in production. */
+                    /** @description Access and refresh JWT cookies lasting one hour and seven days respectively; HttpOnly, SameSite=Strict, and Secure in production. Refresh cookie is scoped to /auth/refresh. */
                     "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
@@ -605,6 +694,54 @@ export interface operations {
             };
             /** @description The username or password is invalid. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description New HttpOnly access_token cookie lasting one hour. */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRegisterResponseDto"];
+                };
+            };
+            /** @description Missing, invalid, or expired refresh token, or user no longer exists. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description User is suspended. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -703,6 +840,76 @@ export interface operations {
                 };
             };
             /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    ProductOwnershipController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignSellerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSellerResponseDto"];
+                };
+            };
+            /** @description Invalid input or target is not an active seller. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Super permission required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Product or seller not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Unexpected server error. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -1037,7 +1244,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description The cart line, product, or user does not exist. */
+            /** @description The product or user does not exist. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1046,7 +1253,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description Insufficient stock for the requested quantity. Includes productIds. */
+            /** @description The cart line was removed or replaced, or stock is insufficient. Stock conflicts include productIds. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1092,7 +1299,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description The authenticated user is suspended. */
+            /** @description The authenticated user is suspended or lacks the Buy permission. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1168,7 +1375,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description The authenticated user is suspended. */
+            /** @description The authenticated user is suspended or lacks the Buy permission. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1216,7 +1423,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description The authenticated user is suspended. */
+            /** @description The authenticated user is suspended or lacks the Buy permission. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1235,6 +1442,121 @@ export interface operations {
                 };
             };
             /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    SellerOrderController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderResponseDto"][];
+                };
+            };
+            /** @description Invalid pagination. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Missing or invalid authentication. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Sell permission required; suspended users are denied. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    SellerOrderController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderResponseDto"];
+                };
+            };
+            /** @description Missing or invalid authentication. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Sell permission required; suspended users are denied. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Order does not exist or contains no lines belonging to this seller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Unexpected server error. */
             500: {
                 headers: {
                     [name: string]: unknown;
