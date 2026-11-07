@@ -238,7 +238,7 @@ describe("Order (domain)", () => {
   it("rejects an unknown status", () => {
     expectRule(
       () => new Order({ orderId: "o1", userId: "u1", cartId: "c1", status: "paid" as Order["status"], items: [item("o1", "a")], }),
-      "status must be one of: pending, completed, cancelled",
+      "status must be one of: pending, delivered, completed, cancelled",
     );
   });
 });

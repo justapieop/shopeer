@@ -1,4 +1,5 @@
 import {
+  ConflictError,
   EmptyCartError,
   NotFoundError,
   Order,
@@ -22,6 +23,35 @@ export class OrderUseCase {
     private readonly orderRepository: OrderRepository,
     private readonly idGenerator: IdGenerator,
   ) {}
+
+  /** The HTTP adapter restricts this operation to handlers with EditAnyOrder. */
+  public async confirmDelivery(orderId: string): Promise<Order> {
+    return this.unitOfWork.execute(async ({ orders }) => {
+      const order = await orders.fetchOrderById(orderId);
+      if (!order) throw new NotFoundError(`Order ${orderId} not found`);
+      if (order.status === "delivered" || order.status === "completed") return order;
+      if (order.status !== "pending") throw new ConflictError("Only pending orders can be marked delivered");
+      await orders.transitionStatus(orderId, "pending", "delivered");
+      const updated = await orders.fetchOrderById(orderId);
+      if (!updated || (updated.status !== "delivered" && updated.status !== "completed")) {
+        throw new ConflictError("Order changed before delivery could be confirmed");
+      }
+      return updated;
+    });
+  }
+
+  public async confirmReceipt(userId: string, orderId: string): Promise<Order> {
+    return this.unitOfWork.execute(async ({ orders }) => {
+      const order = await orders.fetchOrderById(orderId);
+      if (!order || order.userId !== userId) throw new NotFoundError(`Order ${orderId} not found`);
+      if (order.status === "completed") return order;
+      if (order.status !== "delivered") throw new ConflictError("The handler must confirm delivery before you can confirm receipt");
+      await orders.transitionStatus(orderId, "delivered", "completed");
+      const updated = await orders.fetchOrderById(orderId);
+      if (!updated || updated.status !== "completed") throw new ConflictError("Order changed before receipt could be confirmed");
+      return updated;
+    });
+  }
 
   /**
    * Turns the user's whole cart into an order.

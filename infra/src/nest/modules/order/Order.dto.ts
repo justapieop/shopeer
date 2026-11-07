@@ -28,7 +28,7 @@ export class OrderItemResponseDto {
 }
 
 export class OrderResponseDto {
-  @ApiProperty({ enum: ["pending", "completed", "cancelled"] })
+  @ApiProperty({ enum: ["pending", "delivered", "completed", "cancelled"], description: "pending → delivered (handler confirmation) → completed (buyer receipt confirmation)." })
   public readonly status!: Order["status"];
   @ApiProperty({ type: String, example: "order-1" })
   public readonly orderId!: string;

@@ -25,6 +25,7 @@ import { CartAndOrder1790475374461 } from "../dist/nest/modules/app/migrations/1
 import { OrderCartId1791680000000 } from "../dist/nest/modules/app/migrations/1791680000000-order-cart-id.js";
 import { Roles1791786448696 } from "../dist/nest/modules/app/migrations/1791786448696-roles.js";
 import { OrderStatus1794000000000 } from "../dist/nest/modules/app/migrations/1794000000000-order-status.js";
+import { OrderDelivered1794200000000 } from "../dist/nest/modules/app/migrations/1794200000000-order-delivered.js";
 import { OrderSellers1794050000000 } from "../dist/nest/modules/app/migrations/1794050000000-order-sellers.js";
 
 import { SalesPeriods1794100000000 } from "../dist/nest/modules/app/migrations/1794100000000-sales-periods.js";
@@ -52,7 +53,7 @@ describe("Unit of Work with PostgreSQL", {
       type: "postgres", url: databaseUrl, schema,
       extra: { options: `-c search_path=${schema},public`, max: 8 },
       entities: [SalesPeriodEntity, CartEntity, CartItemEntity, ProductEntity, CategoryEntity, UserEntity, OrderEntity, OrderItemEntity, RoleEntity],
-      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696, OrderStatus1794000000000, OrderSellers1794050000000, SalesPeriods1794100000000],
+      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696, OrderStatus1794000000000, OrderSellers1794050000000, SalesPeriods1794100000000, OrderDelivered1794200000000],
     });
     await database.initialize();
     await database.runMigrations();
@@ -85,6 +86,18 @@ describe("Unit of Work with PostgreSQL", {
   });
 
   const sales = () => new SalesUseCase(unitOfWork, ids);
+  it("persists the two-step completion protocol under duplicate confirmations", async () => {
+    const useCase = checkout();
+    const placed = await useCase.checkout("alice");
+    await assert.rejects(useCase.confirmReceipt("alice", placed.orderId), /handler must confirm delivery/);
+    await Promise.all([useCase.confirmDelivery(placed.orderId), useCase.confirmDelivery(placed.orderId)]);
+    assert.equal((await useCase.getOrder("alice", placed.orderId)).status, "delivered");
+    await assert.rejects(useCase.confirmReceipt("bob", placed.orderId), NotFoundError);
+    await Promise.all([useCase.confirmReceipt("alice", placed.orderId), useCase.confirmReceipt("alice", placed.orderId)]);
+    assert.equal((await useCase.confirmDelivery(placed.orderId)).status, "completed");
+    assert.equal(await unitOfWork.execute(({ orders }) => orders.transitionStatus(placed.orderId, "pending", "delivered")), false);
+    assert.equal((await useCase.getOrder("alice", placed.orderId)).status, "completed");
+  });
   const future = () => new Date(Date.now() + 3_600_000);
   const productInput = { name: "Seller mug", description: "Ceramic mug", price: 100, categoryId: "cat", stock: 3, imageUrl: "https://example.com/mug.jpg" };
 

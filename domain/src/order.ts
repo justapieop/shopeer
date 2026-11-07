@@ -81,7 +81,7 @@ export class Order extends Domain {
     public readonly userId!: string;
     public readonly cartId!: string;
     public readonly items!: readonly OrderItem[];
-    public readonly status!: "pending" | "completed" | "cancelled";
+    public readonly status!: OrderStatus;
     /** Sum of every item's subtotal, in VND. */
     public readonly totalAmount!: number;
     public readonly createdAt!: Date;
@@ -115,10 +115,10 @@ export class Order extends Domain {
 
         if (
             !this.details.status ||
-            !["pending", "completed", "cancelled"].includes(this.details.status)
+            !["pending", "delivered", "completed", "cancelled"].includes(this.details.status)
         ) {
             return new InvalidParametersError(
-                "status must be one of: pending, completed, cancelled",
+                "status must be one of: pending, delivered, completed, cancelled",
             );
         }
 
@@ -150,11 +150,14 @@ export class Order extends Domain {
     }
 }
 
+/** Handler confirms delivery before the buyer confirms receipt and completes the order. */
+export type OrderStatus = "pending" | "delivered" | "completed" | "cancelled";
+
 export interface OrderDetails extends DomainDetails {
     orderId: string;
     userId: string;
     cartId: string;
     items: OrderItem[];
     createdAt?: Date;
-    status: "pending" | "completed" | "cancelled";
+    status: OrderStatus;
 }

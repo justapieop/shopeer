@@ -208,6 +208,12 @@ export class InMemoryCartItemRepository implements CartItemRepository {
 
 /** Follows the placeOrder contract in memory (single-threaded, so no locking needed). */
 export class InMemoryOrderRepository implements OrderRepository {
+  public transitionStatus(orderId: string, from: Order["status"], to: Order["status"]): boolean {
+    const order = this.orders.get(orderId);
+    if (!order || order.status !== from) return false;
+    this.orders.set(orderId, new Order({ orderId, userId: order.userId, cartId: order.cartId, items: [...order.items], createdAt: order.createdAt, status: to }));
+    return true;
+  }
   public fetchOrderBySellerId(sellerId: string, orderId: string): Order | null {
     const order = this.orders.get(orderId);
     const items = order?.items.filter((item) => item.sellerId === sellerId) ?? [];

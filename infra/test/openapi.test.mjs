@@ -18,6 +18,7 @@ import { InMemoryCacheManager } from "../dist/nest/common/cache/InMemoryCacheMan
 
 import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 import { SellerOrderController } from "../dist/nest/modules/order/SellerOrder.controller.js";
+import { HandlerOrderController } from "../dist/nest/modules/order/HandlerOrder.controller.js";
 import { ProductOwnershipController } from "../dist/nest/modules/product/ProductOwnership.controller.js";
 
 import { SellerProductController } from "../dist/nest/modules/product/SellerProduct.controller.js";
@@ -33,6 +34,8 @@ const routes = [
   ["post", "/checkout", "201"], ["get", "/orders", "200"], ["get", "/orders/{orderId}", "200"],
   ["get", "/seller/orders", "200"], ["get", "/seller/orders/{orderId}", "200"],
   ["put", "/admin/products/{productId}/seller", "200"],
+  ["post", "/handler/orders/{orderId}/confirm-delivery", "200"],
+  ["post", "/orders/{orderId}/confirm-receipt", "200"],
 ];
 
 const storedUser = new User({ id: "user-1", username: "alice", hashedPassword: "secret-hash", suspended: false });
@@ -42,7 +45,7 @@ describe("OpenAPI documentation", () => {
 
   before(async () => {
     const module = await Test.createTestingModule({
-      controllers: [SellerProductController, AuthController, CartController, OrderController, SellerOrderController, ProductOwnershipController, ProductController, CategoryController, UserController],
+      controllers: [SellerProductController, AuthController, CartController, OrderController, SellerOrderController, HandlerOrderController, ProductOwnershipController, ProductController, CategoryController, UserController],
       providers: [
         UserPipe,
         { provide: SalesUseCase, useValue: {} },
@@ -115,7 +118,7 @@ describe("OpenAPI documentation", () => {
     assert.equal(document.components.securitySchemes.bearer, undefined);
     for (const [method, path] of routes) {
       const operation = document.paths[path][method];
-      const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path.startsWith("/seller/") || path.startsWith("/admin/") || path === "/checkout" || path === "/user/me";
+      const protectedRoute = path.startsWith("/cart") || path.startsWith("/orders") || path.startsWith("/seller/") || path.startsWith("/admin/") || path.startsWith("/handler/") || path === "/checkout" || path === "/user/me";
       if (protectedRoute) {
         assert.deepEqual(operation.security, [{ cookie: [] }]);
         assert.ok(operation.responses["401"]);

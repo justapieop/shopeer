@@ -7,6 +7,7 @@ import { Cuid2IdGenerator } from "../../common/Cuid2IdGenerator.js";
 import { UserModule } from "../user/User.module.js";
 import { PermissionsModule } from "../permissions/Permissions.module.js";
 import { OrderController } from "./Order.controller.js";
+import { HandlerOrderController } from "./HandlerOrder.controller.js";
 import { SellerOrderController } from "./SellerOrder.controller.js";
 import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "./Order.repository.js";
 
@@ -19,6 +20,7 @@ import { OrderEntity, OrderItemEntity, TypeOrmOrderRepository } from "./Order.re
   ],
   controllers: [
     OrderController,
+    HandlerOrderController,
     SellerOrderController,
   ],
   providers: [

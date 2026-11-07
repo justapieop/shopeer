@@ -28,7 +28,7 @@ import { SalesPeriodEntity } from "../product/Sales.repository.js";
 @Entity({
   name: "orders",
 })
-@Check("CHK_orders_status", `"status" IN ('pending', 'completed', 'cancelled')`)
+@Check("CHK_orders_status", `"status" IN ('pending', 'delivered', 'completed', 'cancelled')`)
 export class OrderEntity {
   @PrimaryColumn({ type: "text" })
   public readonly id!: string;
@@ -79,6 +79,11 @@ export class OrderItemEntity {
 
 @Injectable()
 export class TypeOrmOrderRepository implements OrderRepository {
+  public async transitionStatus(orderId: string, from: Order["status"], to: Order["status"]): Promise<boolean> {
+    requireTransaction(this.orderRepository.manager);
+    const result = await this.orderRepository.update({ id: orderId, status: from }, { status: to });
+    return result.affected === 1;
+  }
   public onProductsChanged?: () => void;
 
   public constructor(

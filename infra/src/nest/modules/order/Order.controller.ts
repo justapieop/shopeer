@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Inject, Param, Post, Query } from "@nestjs/common";
+import { Controller, Get, Header, HttpCode, Inject, Param, Post, Query } from "@nestjs/common";
 import { PaginationQueryDto } from "../../common/Pagination.dto.js";
 import { OrderUseCase } from "@shopeer/case";
 import { Permission, type Order } from "@shopeer/domain";
@@ -23,6 +23,16 @@ export class OrderController {
     @Inject(OrderUseCase)
     private readonly orderUseCase: OrderUseCase,
   ) { }
+
+  @Post("/orders/:orderId/confirm-receipt")
+  @HttpCode(200)
+  @ApiOperation({ summary: "Confirm receipt of your order", description: "Only the buyer can confirm receipt, after a handler confirms delivery. Completes the order. Repeated confirmation is safe." })
+  @ApiParam({ name: "orderId", type: String })
+  @ApiOkResponse({ type: OrderResponseDto })
+  @ApiErrors({ status: 404, description: "Order does not exist or belongs to another buyer." }, { status: 409, description: "Delivery has not been confirmed or the order was cancelled." })
+  public async confirmReceipt(@AuthenticatedUser() user: DomainUser, @Param("orderId") orderId: string): Promise<OrderResponseDto> {
+    return OrderResponseDto.from(await this.orderUseCase.confirmReceipt(user.id, orderId));
+  }
 
   /** Turns the current user's cart into an order. 201 Created on success. */
   @Post("/checkout")

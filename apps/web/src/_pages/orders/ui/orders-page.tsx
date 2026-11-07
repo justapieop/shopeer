@@ -6,12 +6,12 @@ import { redirect } from "next/navigation";
 import { Button } from "@heroui/react";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
 import { SessionStatus, useSession } from "@/entities/session";
-import { fetchOrders, OrderViewError, type Order, type OrderMode } from "../api/fetch-orders";
+import { confirmReceipt, fetchOrders, OrderViewError, type Order, type OrderMode } from "../api/fetch-orders";
 import styles from "./orders-page.module.css";
 
 const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
-const statuses = { pending: "Pending", completed: "Completed", cancelled: "Cancelled" };
+const statuses = { pending: "Pending", delivered: "Delivered · Awaiting receipt confirmation", completed: "Completed", cancelled: "Cancelled" };
 
 export function OrdersPage({ mode, orderId }: { mode: OrderMode; orderId?: string }) {
   const { user, status, refresh } = useSession();
@@ -52,18 +52,33 @@ function OrdersWorkspace({ mode, orderId }: { mode: OrderMode; orderId: string |
   const orders = result.orders ?? [];
   return <>
     <div className={styles["toolbar"]}><span>{orders.length ? `${orders.length} ${orders.length === 1 ? "order" : "orders"}${orderId ? "" : ` · Page ${page}`}` : "No orders"}</span><Button variant="ghost" onPress={() => setAttempt((value) => value + 1)}><RefreshCw size={16} aria-hidden="true" /> Refresh orders</Button></div>
-    {orders.length ? <div className={styles["orders"]}>{orders.map((order) => <OrderCard key={order.orderId} order={order} mode={mode} detail={Boolean(orderId)} />)}</div>
+    {orders.length ? <div className={styles["orders"]}>{orders.map((order) => <OrderCard key={order.orderId} order={order} mode={mode} detail={Boolean(orderId)} onConfirmed={(updated) => setResult((current) => current?.orders ? { orders: current.orders.map((item) => item.orderId === updated.orderId ? updated : item) } : current)} />)}</div>
       : <section className={styles["message"]}><h2>{page > 1 ? "No more orders" : mode === "buyer" ? "No orders yet" : "No placed orders yet"}</h2><p>{mode === "buyer" ? "Orders you place will appear here." : "Orders containing products sold by you will appear here."}</p>{mode === "buyer" && <Link href="/store" className={styles["textLink"]}>Browse the store</Link>}</section>}
     {!orderId && (page > 1 || orders.length === 20) && <nav className={styles["pagination"]} aria-label="Order pages"><Button variant="secondary" isDisabled={page === 1} onPress={() => setPage((value) => value - 1)}><ArrowLeft size={16} aria-hidden="true" /> Previous</Button><span>Page {page}</span><Button variant="secondary" isDisabled={orders.length < 20} onPress={() => setPage((value) => value + 1)}>Next <ArrowRight size={16} aria-hidden="true" /></Button></nav>}
   </>;
 }
 
-function OrderCard({ order, mode, detail }: { order: Order; mode: OrderMode; detail: boolean }) {
+function OrderCard({ order, mode, detail, onConfirmed }: { order: Order; mode: OrderMode; detail: boolean; onConfirmed: (order: Order) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function receive() {
+    if (confirming) return;
+    setConfirming(true);
+    setError(null);
+    try { onConfirmed(await confirmReceipt(order.orderId)); }
+    catch (cause) { setError(cause instanceof OrderViewError ? cause.message : "We couldn’t confirm receipt. Please try again."); }
+    finally { setConfirming(false); }
+  }
   const href = `${mode === "buyer" ? "/orders" : "/seller/orders"}/${encodeURIComponent(order.orderId)}`;
   return <section className={styles["order"]} aria-label={`Order ${order.orderId}`}>
     <header className={styles["orderHeader"]}><div><h2>{detail ? `Order ${order.orderId}` : <Link href={href} prefetch={false}>Order {order.orderId}</Link>}</h2><p><time dateTime={order.createdAt}>{date.format(new Date(order.createdAt))}</time></p></div><span className={styles["status"]}>{statuses[order.status]}</span></header>
     <ul className={styles["items"]}>{order.items.map((item) => <li key={item.productId}><OrderImage src={item.imageUrl} name={item.name} /><div className={styles["identity"]}><h3>{item.name}</h3><p>{item.quantity} × {money.format(item.unitPrice)}</p></div><span className={styles["amount"]}>{money.format(item.subtotal)}</span></li>)}</ul>
     <div className={styles["total"]}><span>{mode === "buyer" ? "Total" : "Your items total"}</span><strong>{money.format(order.totalAmount)}</strong></div>
+    {order.status === "delivered" && <div className={styles["confirmation"]}>
+      <p>{mode === "buyer" ? "The handler confirmed delivery. Confirm receipt only after you have received your package." : "Delivery confirmed. Waiting for the buyer to confirm receipt."}</p>
+      {mode === "buyer" && <Button variant="secondary" isPending={confirming} onPress={() => { void receive(); }}>Confirm receipt</Button>}
+      {error && <p role="alert">{error}</p>}
+    </div>}
   </section>;
 }
 

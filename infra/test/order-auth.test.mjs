@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { OrderController } from "../dist/nest/modules/order/Order.controller.js";
+import { HandlerOrderController } from "../dist/nest/modules/order/HandlerOrder.controller.js";
 import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 
 const secret = "order-authorization-test-secret";
@@ -20,7 +21,7 @@ describe("order endpoint authorization", () => {
   let app, bits, suspended, missingRole, operations;
   before(async () => {
     const module = await Test.createTestingModule({
-      controllers: [OrderController],
+      controllers: [OrderController, HandlerOrderController],
       providers: [
         UserPipe,
         { provide: ConfigService, useValue: new ConfigService({ JWT_SECRET: secret }) },
@@ -30,6 +31,8 @@ describe("order endpoint authorization", () => {
           checkout: async (id) => { operations.push(["checkout", id]); return order; },
           listOrders: async (id) => { operations.push(["list", id]); return [order]; },
           getOrder: async (id) => { operations.push(["get", id]); return order; },
+          confirmReceipt: async (id) => { operations.push(["receipt", id]); return order; },
+          confirmDelivery: async (id) => { operations.push(["delivery", id]); return order; },
         } },
       ],
     }).compile();
@@ -40,7 +43,7 @@ describe("order endpoint authorization", () => {
   after(async () => { await app?.close(); });
   beforeEach(() => { bits = 1n << BigInt(Permission.Buy.offset); suspended = false; missingRole = false; operations = []; });
 
-  for (const [method, path] of [["post", "/checkout"], ["get", "/orders"], ["get", "/orders/order"]]) {
+  for (const [method, path] of [["post", "/checkout"], ["get", "/orders"], ["get", "/orders/order"], ["post", "/orders/order/confirm-receipt"]]) {
     const send = (authenticated = true) => {
       const req = request(app.getHttpServer())[method](path);
       return authenticated ? req.set("Cookie", `access_token=${jwt.sign({ sub: "buyer" }, secret)}`) : req;
@@ -60,9 +63,9 @@ describe("order endpoint authorization", () => {
       assert.deepEqual(operations, []);
     });
     it(`${method} ${path} allows Buy and Super`, async () => {
-      await send().expect(method === "post" ? 201 : 200);
+      await send().expect(path === "/checkout" ? 201 : 200);
       bits = 1n << BigInt(Permission.Super.offset);
-      await send().expect(method === "post" ? 201 : 200);
+      await send().expect(path === "/checkout" ? 201 : 200);
       assert.equal(operations.length, 2);
       assert.ok(operations.every(([, id]) => id === "buyer"));
     });
@@ -73,4 +76,17 @@ describe("order endpoint authorization", () => {
       assert.deepEqual(operations, []);
     });
   }
+
+  it("only handlers, admins and owners can confirm delivery", async () => {
+    const send = () => request(app.getHttpServer()).post("/handler/orders/order/confirm-delivery")
+      .set("Cookie", `access_token=${jwt.sign({ sub: "buyer" }, secret)}`);
+    await request(app.getHttpServer()).post("/handler/orders/order/confirm-delivery").expect(401);
+    for (bits of [6n, 174n]) await send().expect(403);
+    assert.deepEqual(operations, []);
+    for (bits of [238n, 510n, 1n]) await send().expect(200);
+    assert.deepEqual(operations, [["delivery", "order"], ["delivery", "order"], ["delivery", "order"]]);
+    suspended = true;
+    await send().expect(403);
+    assert.equal(operations.length, 3);
+  });
 });

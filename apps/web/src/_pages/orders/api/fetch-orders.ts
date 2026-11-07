@@ -8,6 +8,20 @@ export class OrderViewError extends Error {
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
 
+export async function confirmReceipt(orderId: string): Promise<Order> {
+  const result = await api.POST("/orders/{orderId}/confirm-receipt", {
+    params: { path: { orderId } }, signal: AbortSignal.timeout(8_000),
+  });
+  if (!result.response.ok || !result.data) {
+    const status = result.response.status;
+    throw new OrderViewError(status === 409 ? "Delivery has not been confirmed, or this order has changed. Refresh orders and try again."
+      : status === 404 ? "Order not found."
+      : status === 403 ? "Your account doesn’t have permission to confirm receipt."
+      : "We couldn’t confirm receipt. Please try again.", status);
+  }
+  return result.data;
+}
+
 export async function fetchOrders(mode: OrderMode, page: number, orderId: string | undefined, signal: AbortSignal): Promise<Order[]> {
   const options = { cache: "no-store" as const, signal: AbortSignal.any([signal, AbortSignal.timeout(8_000)]) };
   const result = orderId

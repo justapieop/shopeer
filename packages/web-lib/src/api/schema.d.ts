@@ -161,6 +161,26 @@ export interface paths {
         patch: operations["CartController_updateItem"];
         trace?: never;
     };
+    "/orders/{orderId}/confirm-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm receipt of your order
+         * @description Only the buyer can confirm receipt, after a handler confirms delivery. Completes the order. Repeated confirmation is safe.
+         */
+        post: operations["OrderController_confirmReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/checkout": {
         parameters: {
             query?: never;
@@ -366,6 +386,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/handler/orders/{orderId}/confirm-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm an order was delivered
+         * @description Requires EditAnyOrder (order_handler, admin or owner). Moves pending to delivered; only the buyer can then complete it by confirming receipt. Repeated confirmation is safe.
+         */
+        post: operations["HandlerOrderController_confirmDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -534,8 +574,11 @@ export interface components {
             subtotal: number;
         };
         OrderResponseDto: {
-            /** @enum {string} */
-            status: "pending" | "completed" | "cancelled";
+            /**
+             * @description pending → delivered (handler confirmation) → completed (buyer receipt confirmation).
+             * @enum {string}
+             */
+            status: "pending" | "delivered" | "completed" | "cancelled";
             /** @example order-1 */
             orderId: string;
             /**
@@ -1279,6 +1322,72 @@ export interface operations {
             };
         };
     };
+    OrderController_confirmReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderResponseDto"];
+                };
+            };
+            /** @description Missing, invalid, or expired JWT, or the token's user no longer exists. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description The authenticated user is suspended or lacks the Buy permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Order does not exist or belongs to another buyer. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Delivery has not been confirmed or the order was cancelled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
     OrderController_checkout: {
         parameters: {
             query?: never;
@@ -1839,6 +1948,72 @@ export interface operations {
                 };
             };
             /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    HandlerOrderController_confirmDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderResponseDto"];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description EditAnyOrder permission required; suspended users are denied. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Order does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Order was cancelled or changed during confirmation. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Unexpected server error. */
             500: {
                 headers: {
                     [name: string]: unknown;

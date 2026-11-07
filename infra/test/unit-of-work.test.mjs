@@ -115,6 +115,7 @@ describe("TypeOrmUnitOfWork", () => {
     ["user save", UserEntity, TypeOrmUserRepository, "save", [{}]],
     ["user creation", UserEntity, TypeOrmUserRepository, "create", [{}]],
     ["role save", RoleEntity, TypeOrmRoleRepository, "save", [{}]],
+    ["order status transition", OrderEntity, TypeOrmOrderRepository, "transitionStatus", ["order", "pending", "delivered"]],
   ]) {
     it(`rejects ${name} through a normal repository provider`, async () => {
       const { dataSource, runners } = connection();

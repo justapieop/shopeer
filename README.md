@@ -54,5 +54,6 @@ Muốn xóa sạch database local: `docker compose down -v`, rồi `pnpm db:seed
 
 ## Tài liệu
 
+- [docs/order-completion.md](docs/order-completion.md): xác nhận giao hàng bởi người xử lý và xác nhận nhận hàng bởi người mua
 - [docs/cart-checkout.md](docs/cart-checkout.md): luồng giỏ hàng, thanh toán và cách xử lý race condition
 - [docs/requests.http](docs/requests.http): gọi thử API bằng extension REST Client của VS Code
