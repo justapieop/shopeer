@@ -4,7 +4,7 @@ import { after, before, beforeEach, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
 import { ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { AuthorizationUseCase, OrderUseCase, ProductOwnershipUseCase, UserUseCase } from "@shopeer/case";
+import { SalesUseCase, AuthorizationUseCase, OrderUseCase, ProductOwnershipUseCase, UserUseCase } from "@shopeer/case";
 import { Order, OrderItem, Role, User } from "@shopeer/domain";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
@@ -14,6 +14,8 @@ import { SellerOrderController } from "../dist/nest/modules/order/SellerOrder.co
 import { ProductOwnershipController } from "../dist/nest/modules/product/ProductOwnership.controller.js";
 import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 import { DomainErrorFilter } from "../dist/nest/common/filters/DomainError.filter.js";
+
+import { SellerProductController } from "../dist/nest/modules/product/SellerProduct.controller.js";
 
 const secret = "order-view-test";
 const bits = { buyer: 2n, seller: 4n, other: 4n, admin: 1n, unrelated: 0n };
@@ -27,8 +29,13 @@ describe("buyer and seller order views", () => {
     return user ? req.set("Cookie", `access_token=${jwt.sign({ sub: user }, secret)}`) : req;
   };
   before(async () => {
-    const module = await Test.createTestingModule({ controllers: [OrderController, SellerOrderController, ProductOwnershipController], providers: [
+    const module = await Test.createTestingModule({ controllers: [SellerProductController, OrderController, SellerOrderController, ProductOwnershipController], providers: [
       UserPipe,
+      { provide: SalesUseCase, useValue: {
+        list: async (seller) => { assignments.push([seller]); return []; },
+        create: async (...args) => { assignments.push(args); return { id: "period" }; },
+        publish: async (...args) => { assignments.push(args); return { id: "period" }; },
+      } },
       { provide: ConfigService, useValue: new ConfigService({ JWT_SECRET: secret }) },
       { provide: UserUseCase, useValue: { fetchUserById: async (id) => bits[id] !== undefined ? new User({ id, username: id, hashedPassword: "private", suspended }) : null } },
       { provide: AuthorizationUseCase, useValue: new AuthorizationUseCase({ fetchRoleByUserId: async (id) => new Role({ id, name: id, permission: bits[id] ?? 0n }) }) },
@@ -48,6 +55,35 @@ describe("buyer and seller order views", () => {
   });
   after(async () => { await app?.close(); });
   beforeEach(() => { assignments = []; suspended = false; });
+
+  for (const [method, path] of [["get", "/seller/products"], ["post", "/seller/products"], ["post", "/seller/products/mug/periods"]]) {
+    it(`${method} ${path} requires Sell and authentication`, async () => {
+      await send(method, path).expect(401);
+      await send(method, path, "buyer").expect(403);
+      suspended = true;
+      await send(method, path, "seller").expect(403);
+      assert.deepEqual(assignments, []);
+    });
+  }
+  it("uses the authenticated seller and ignores forged ownership and period fields", async () => {
+    const endsAt = new Date(Date.now() + 3600000).toISOString();
+    await send("post", "/seller/products", "seller").send({ name: "Mug", description: "Ceramic", price: 100, stock: 5, categoryId: "cat", imageUrl: "https://example.com/mug.jpg", endsAt, sellerId: "other", saleId: "fake" }).expect(201);
+    assert.equal(assignments[0][0], "seller");
+    assert.equal(assignments[0][1].sellerId, undefined);
+    assert.equal(assignments[0][1].saleId, undefined);
+    await send("post", "/seller/products/mug/periods", "seller").send({ additionalStock: 4, endsAt, sellerId: "other", quantity: 999 }).expect(201);
+    assert.deepEqual(assignments[1].slice(0, 3), ["seller", "mug", 4]);
+    const response = await send("get", "/seller/products?sellerId=other", "seller").expect(200);
+    assert.equal(response.headers["cache-control"], "no-store");
+    assert.deepEqual(assignments[2], ["seller"]);
+  });
+  it("rejects malformed period stock and dates and offers no stock-edit endpoint", async () => {
+    for (const body of [{ additionalStock: -1, endsAt: new Date().toISOString() }, { additionalStock: 1.5, endsAt: new Date().toISOString() }, { additionalStock: 1, endsAt: "bad" }, { additionalStock: "5", endsAt: new Date().toISOString() }]) {
+      await send("post", "/seller/products/mug/periods", "seller").send(body).expect(400);
+    }
+    await send("patch", "/seller/products/mug", "seller").send({ stock: 999 }).expect(404);
+    assert.deepEqual(assignments, []);
+  });
 
   for (const path of ["/orders", "/orders/placed", "/seller/orders", "/seller/orders/placed"]) {
     it(`${path} requires authentication`, async () => { await send("get", path).expect(401); });

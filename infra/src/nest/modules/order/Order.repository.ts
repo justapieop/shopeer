@@ -23,6 +23,7 @@ import { requireTransaction } from "../../../database/requireTransaction.js";
 import { CartEntity } from "../cart/Cart.repository.js";
 import { CartItemEntity } from "../cart/CartItem.repository.js";
 import { ProductEntity } from "../product/Product.repository.js";
+import { SalesPeriodEntity } from "../product/Sales.repository.js";
 
 @Entity({
   name: "orders",
@@ -52,6 +53,8 @@ export class OrderEntity {
   name: "order_items",
 })
 export class OrderItemEntity {
+  @Column({ type: "text", name: "sale_id", nullable: true })
+  public readonly saleId!: string | null;
   @Column({ type: "text", name: "seller_id", nullable: true })
   public readonly sellerId!: string | null;
   @Column({ type: "text", name: "product_name", default: "Product" })
@@ -115,9 +118,16 @@ export class TypeOrmOrderRepository implements OrderRepository {
           quantity: item.quantity,
         })
         .andWhere(`"seller_id" IS NOT DISTINCT FROM :sellerId`, { sellerId: item.sellerId })
+        .andWhere(`"sale_id" IS NOT DISTINCT FROM :saleId`, { saleId: item.saleId })
+        .andWhere(`("sale_ends_at" IS NULL OR "sale_ends_at" > clock_timestamp())`)
         .execute();
       if (result.affected === 0) {
         outOfStock.push(item.productId);
+      } else if (item.saleId) {
+        const period = await manager.createQueryBuilder().update(SalesPeriodEntity)
+          .set({ remaining: () => `"remaining" - :quantity` })
+          .where(`"id" = :id AND "remaining" >= :quantity AND "ends_at" > clock_timestamp()`, { id: item.saleId, quantity: item.quantity }).execute();
+        if (period.affected !== 1) outOfStock.push(item.productId);
       }
     }
 
@@ -241,6 +251,7 @@ function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
           orderId: item.orderId,
           productId: item.productId,
           sellerId: item.sellerId,
+          saleId: item.saleId,
           name: item.name,
           imageUrl: item.imageUrl,
           unitPrice: item.unitPrice,
@@ -263,6 +274,7 @@ function toOrderEntity(order: Order): OrderEntity {
 
 function toOrderItemEntity(item: OrderItem): OrderItemEntity {
   return Object.assign(new OrderItemEntity(), {
+    saleId: item.saleId,
     sellerId: item.sellerId,
     name: item.name,
     imageUrl: item.imageUrl,

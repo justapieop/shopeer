@@ -9,20 +9,27 @@ import { CategoryController, ProductController } from "./Product.controller.js";
 import { ProductEntity, TypeOrmProductRepository } from "./Product.repository.js";
 import { ProductOwnershipController } from "./ProductOwnership.controller.js";
 import { PermissionsModule } from "../permissions/Permissions.module.js";
+import { SalesUseCase } from "@shopeer/case";
+import { Cuid2IdGenerator } from "../../common/Cuid2IdGenerator.js";
+import { SalesPeriodEntity } from "./Sales.repository.js";
+import { SellerProductController } from "./SellerProduct.controller.js";
 
 @Module({
   imports: [
     UnitOfWorkModule,
     PermissionsModule,
-    TypeOrmModule.forFeature([ProductEntity, CategoryEntity]),
+    TypeOrmModule.forFeature([ProductEntity, CategoryEntity, SalesPeriodEntity]),
   ],
   controllers: [
     ProductController,
+    SellerProductController,
     ProductOwnershipController,
     CategoryController,
   ],
   providers: [
     TypeOrmProductRepository,
+    Cuid2IdGenerator,
+    { provide: SalesUseCase, useFactory: (work: TypeOrmUnitOfWork, ids: Cuid2IdGenerator) => new SalesUseCase(work, ids), inject: [TypeOrmUnitOfWork, Cuid2IdGenerator] },
     { provide: ProductOwnershipUseCase, useFactory: (work: UnitOfWork) => new ProductOwnershipUseCase(work), inject: [TypeOrmUnitOfWork] },
     TypeOrmCategoryRepository,
     {

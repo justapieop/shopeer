@@ -20,7 +20,7 @@ export function OrdersPage({ mode, orderId }: { mode: OrderMode; orderId?: strin
   return <div className={styles["page"]}>
     <header className={styles["header"]}>
       <Link href="/" className={styles["wordmark"]} aria-label="Shopeer home">shopeer</Link>
-      <nav aria-label="Main navigation"><Link href="/store" prefetch={false}>Store</Link><Link href="/cart" prefetch={false}>Cart</Link><Link href="/orders" aria-current={mode === "buyer" ? "page" : undefined}>Your orders</Link><Link href="/seller/orders" aria-current={mode === "seller" ? "page" : undefined}>Seller orders</Link></nav>
+      <nav aria-label="Main navigation"><Link href="/store" prefetch={false}>Store</Link><Link href="/cart" prefetch={false}>Cart</Link><Link href="/orders" aria-current={mode === "buyer" ? "page" : undefined}>Your orders</Link><Link href="/seller/products">Your products</Link><Link href="/seller/orders" aria-current={mode === "seller" ? "page" : undefined}>Seller orders</Link></nav>
       <SessionStatus />
     </header>
     <main className={styles["main"]}>

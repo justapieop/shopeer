@@ -99,6 +99,7 @@ export class OrderUseCase {
             orderId,
             productId: item.productId,
             sellerId: productsById.get(item.productId)!.sellerId,
+            saleId: productsById.get(item.productId)!.saleId,
             name: productsById.get(item.productId)!.name,
             imageUrl: productsById.get(item.productId)!.imageUrl,
             // Snapshot of today's price: later price changes do not alter this order.

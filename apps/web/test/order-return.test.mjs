@@ -10,4 +10,5 @@ test("keeps login redirects on local allowlisted routes", () => {
   assert.equal(returnDestination(new URLSearchParams("next=https://evil.example")), "/");
   assert.equal(returnDestination(new URLSearchParams("next=orders&orderId=https://evil.example")), "/orders/https%3A%2F%2Fevil.example");
   assert.equal(returnDestination(new URLSearchParams("next=cart")), "/cart");
+  assert.equal(returnDestination(new URLSearchParams("next=seller-products")), "/seller/products");
 });

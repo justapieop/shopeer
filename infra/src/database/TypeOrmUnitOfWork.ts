@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
-import type { RepositorySet, UnitOfWork } from "@shopeer/case";
+import type { UnitOfWork } from "@shopeer/case";
 import { DataSource } from "typeorm";
 import { CartEntity, TypeOrmCartRepository } from "../nest/modules/cart/Cart.repository.js";
 import { CartItemEntity, TypeOrmCartItemRepository } from "../nest/modules/cart/CartItem.repository.js";
@@ -10,9 +10,11 @@ import { CategoryEntity, TypeOrmCategoryRepository } from "../nest/modules/produ
 import { RoleEntity, TypeOrmRoleRepository } from "../nest/modules/role/Role.repository.js";
 import { UserEntity, TypeOrmUserRepository } from "../nest/modules/user/User.repository.js";
 import { InMemoryCacheManager } from "../nest/common/cache/InMemoryCacheManager.js";
+import type { SalesRepositories } from "@shopeer/case";
+import { TypeOrmSalesRepository } from "../nest/modules/product/Sales.repository.js";
 
 @Injectable()
-export class TypeOrmUnitOfWork implements UnitOfWork {
+export class TypeOrmUnitOfWork implements UnitOfWork<SalesRepositories> {
   public constructor(
     @InjectDataSource()
     private readonly dataSource: DataSource,
@@ -21,7 +23,7 @@ export class TypeOrmUnitOfWork implements UnitOfWork {
     private readonly cacheManager?: InMemoryCacheManager,
   ) {}
 
-  public async execute<T>(work: (repositories: RepositorySet) => Promise<T>): Promise<T> {
+  public async execute<T>(work: (repositories: SalesRepositories) => Promise<T>): Promise<T> {
     let productsChanged: boolean = false;
     let categoriesChanged: boolean = false;
 
@@ -36,7 +38,8 @@ export class TypeOrmUnitOfWork implements UnitOfWork {
       );
       orders.onProductsChanged = () => { productsChanged = true; };
 
-      const repositories: RepositorySet = {
+      const repositories: SalesRepositories = {
+        sales: new TypeOrmSalesRepository(manager, () => { productsChanged = true; }),
         carts: new TypeOrmCartRepository(manager.getRepository(CartEntity)),
         cartItems: new TypeOrmCartItemRepository(manager.getRepository(CartItemEntity)),
         products,

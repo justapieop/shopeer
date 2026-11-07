@@ -11,6 +11,7 @@ export class OrderItem extends Domain {
     public readonly orderId!: string;
     public readonly productId!: string;
     public readonly sellerId: string | null;
+    public readonly saleId: string | null;
     public readonly name: string;
     public readonly imageUrl: string;
     /** Price in VND of one unit when the order was placed. */
@@ -23,6 +24,7 @@ export class OrderItem extends Domain {
         this.orderId = details.orderId;
         this.productId = details.productId;
         this.sellerId = details.sellerId ?? null;
+        this.saleId = details.saleId ?? null;
         this.name = details.name ?? details.productId;
         this.imageUrl = details.imageUrl ?? "";
         this.unitPrice = details.unitPrice;
@@ -63,6 +65,7 @@ export class OrderItem extends Domain {
 }
 
 export interface OrderItemDetails extends DomainDetails {
+    saleId?: string | null;
     sellerId?: string | null;
     name?: string;
     imageUrl?: string;

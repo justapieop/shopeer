@@ -100,3 +100,32 @@ transactional.
 Errors contain `statusCode`, `error`, and `message`. Validation can return an array of messages. Stock conflicts additionally contain `productIds`. Route documentation lists the applicable HTTP status codes, including 401/403 for protected routes and 409 for cart or stock conflicts.
 
 Setup follows the [NestJS OpenAPI documentation](https://docs.nestjs.com/openapi/introduction).
+
+## Seller products and sales periods
+
+All `/seller/products` routes require cookie authentication and `Sell` permission
+(or `Super`). They remain scoped to the authenticated user's products, including
+for Super accounts. Suspended accounts are denied. Body-supplied seller IDs are
+never accepted as ownership.
+
+- `GET /seller/products`: paginated products with remaining stock and the latest
+  20 sales periods per product; private responses use `Cache-Control: no-store`.
+- `POST /seller/products`: post `name`, `description`, `price` (whole VND),
+  `categoryId`, `imageUrl` (HTTP/HTTPS), `stock`, and `endsAt` (ISO date-time).
+  Creates the seller's product and publishes its first period atomically.
+- `POST /seller/products/:productId/periods`: post `additionalStock` (zero or
+  more) and `endsAt`. Once the previous period ends or sells out, the new period
+  starts immediately with leftover stock plus additional stock. Another seller's
+  product returns 404; an active period with unsold stock returns 409.
+
+Published product details and quantities cannot be edited or reassigned. Each
+period keeps its original quantity, dates, and remaining stock. Checkout reduces
+the product and period availability in the same transaction and snapshots the
+period ID on the order line. Product row locks serialize publishing and checkout;
+stale-period checkouts roll back. Expired quantities are unavailable to buyers
+until republished, including when a catalog response comes from cache.
+
+Migration `1794100000000-sales-periods` adds period records and immutable-term
+constraints. Existing products keep their legacy availability until their owner
+publishes a period; unassigned products remain unassigned. No historical period
+or order attribution is invented. Restart the API to apply its startup migrations.

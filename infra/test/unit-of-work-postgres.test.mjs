@@ -10,7 +10,7 @@ import request from "supertest";
 import { AuthService } from "../dist/nest/modules/auth/Auth.service.js";
 import { AuthController } from "../dist/nest/modules/auth/Auth.controller.js";
 import { DomainErrorFilter } from "../dist/nest/common/filters/DomainError.filter.js";
-import { CartUseCase, OrderUseCase, UserUseCase } from "@shopeer/case";
+import { SalesUseCase, CartUseCase, OrderUseCase, UserUseCase } from "@shopeer/case";
 import { CartChangedError, EmptyCartError, NotFoundError, OutOfStockError, Permission, Role } from "@shopeer/domain";
 import { TypeOrmUnitOfWork } from "../dist/database/TypeOrmUnitOfWork.js";
 import { CartEntity } from "../dist/nest/modules/cart/Cart.repository.js";
@@ -26,6 +26,9 @@ import { OrderCartId1791680000000 } from "../dist/nest/modules/app/migrations/17
 import { Roles1791786448696 } from "../dist/nest/modules/app/migrations/1791786448696-roles.js";
 import { OrderStatus1794000000000 } from "../dist/nest/modules/app/migrations/1794000000000-order-status.js";
 import { OrderSellers1794050000000 } from "../dist/nest/modules/app/migrations/1794050000000-order-sellers.js";
+
+import { SalesPeriods1794100000000 } from "../dist/nest/modules/app/migrations/1794100000000-sales-periods.js";
+import { SalesPeriodEntity } from "../dist/nest/modules/product/Sales.repository.js";
 
 // Explicit opt-in. Each run owns a unique schema; existing tables are untouched.
 const databaseUrl = process.env.UOW_TEST_DATABASE_URL;
@@ -48,8 +51,8 @@ describe("Unit of Work with PostgreSQL", {
     database = new DataSource({
       type: "postgres", url: databaseUrl, schema,
       extra: { options: `-c search_path=${schema},public`, max: 8 },
-      entities: [CartEntity, CartItemEntity, ProductEntity, CategoryEntity, UserEntity, OrderEntity, OrderItemEntity, RoleEntity],
-      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696, OrderStatus1794000000000, OrderSellers1794050000000],
+      entities: [SalesPeriodEntity, CartEntity, CartItemEntity, ProductEntity, CategoryEntity, UserEntity, OrderEntity, OrderItemEntity, RoleEntity],
+      migrations: [Init1789712564933, CartAndOrder1790475374461, OrderCartId1791680000000, Roles1791786448696, OrderStatus1794000000000, OrderSellers1794050000000, SalesPeriods1794100000000],
     });
     await database.initialize();
     await database.runMigrations();
@@ -79,6 +82,94 @@ describe("Unit of Work with PostgreSQL", {
     await database.query(`INSERT INTO "cart_items" ("id", "cart_id", "product_id", "quantity") VALUES
       ('alice-plenty', 'cart-alice', 'a-plenty', 1), ('alice-last', 'cart-alice', 'z-last', 1),
       ('bob-last', 'cart-bob', 'z-last', 1), ('bob-plenty', 'cart-bob', 'a-plenty', 1)`);
+  });
+
+  const sales = () => new SalesUseCase(unitOfWork, ids);
+  const future = () => new Date(Date.now() + 3_600_000);
+  const productInput = { name: "Seller mug", description: "Ceramic mug", price: 100, categoryId: "cat", stock: 3, imageUrl: "https://example.com/mug.jpg" };
+
+  it("publishes a product owned by the seller and reserves only its period's stock", async () => {
+    const period = await sales().create("alice", productInput, future());
+    assert.equal(period.quantity, 3);
+    await new CartUseCase(unitOfWork, ids).addItem("bob", period.productId, 2);
+    const order = await checkout().checkout("bob");
+    assert.equal(order.items.find(item => item.productId === period.productId).saleId, period.id);
+    const stored = await database.getRepository(SalesPeriodEntity).findOneByOrFail({ id: period.id });
+    assert.equal(stored.quantity, 3); assert.equal(stored.remaining, 1);
+    assert.equal((await sales().list("alice", { page: 1, limit: 20 }))[0].stock, 1);
+    assert.deepEqual(await sales().list("bob", { page: 1, limit: 20 }), []);
+  });
+
+  it("prevents another seller from publishing and prevents editing published stock or ownership", async () => {
+    const period = await sales().create("alice", productInput, future());
+    await assert.rejects(sales().publish("bob", period.productId, 5, future()), NotFoundError);
+    await assert.rejects(sales().publish("alice", period.productId, 5, future()), /has not ended/);
+    await assert.rejects(unitOfWork.execute(async ({ products }) => products.save(await products.fetchProductById(period.productId))), /cannot be edited/);
+    await assert.rejects(unitOfWork.execute(({ products }) => products.assignSeller(period.productId, "bob")), /cannot be reassigned/);
+    await assert.rejects(database.query(`UPDATE "sales_periods" SET quantity = quantity + 1 WHERE id = $1`, [period.id]), /immutable/);
+    assert.equal(await database.getRepository(SalesPeriodEntity).count(), 1);
+  });
+
+  it("sells a period's final unit only once and permits added stock after sellout", async () => {
+    await database.query(`DELETE FROM cart_items`);
+    const period = await sales().create("alice", { ...productInput, stock: 1 }, future());
+    const carts = new CartUseCase(unitOfWork, ids);
+    await carts.addItem("alice", period.productId, 1);
+    await carts.addItem("bob", period.productId, 1);
+    const results = await Promise.allSettled([checkout().checkout("alice"), checkout().checkout("bob")]);
+    assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+    assert.equal((await database.getRepository(SalesPeriodEntity).findOneByOrFail({ id: period.id })).remaining, 0);
+    const next = await sales().publish("alice", period.productId, 4, future());
+    assert.equal(next.quantity, 4);
+    assert.equal(await database.getRepository(OrderEntity).count(), 1);
+  });
+
+  async function expiredPeriod() {
+    await database.query(`UPDATE products SET seller_id = 'alice' WHERE id = 'a-plenty'`);
+    await database.query(`INSERT INTO sales_periods (id, product_id, quantity, remaining, additional_stock, starts_at, ends_at) VALUES ('expired', 'a-plenty', 12, 10, 0, now() - interval '2 days', now() - interval '1 day')`);
+    await database.query(`UPDATE products SET sale_id = 'expired', sale_ends_at = now() - interval '1 day' WHERE id = 'a-plenty'`);
+  }
+
+  it("carries leftovers plus additional stock into one new period under concurrent publishing", async () => {
+    await expiredPeriod();
+    const results = await Promise.allSettled([sales().publish("alice", "a-plenty", 5, future()), sales().publish("alice", "a-plenty", 5, future())]);
+    assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+    const periods = await database.getRepository(SalesPeriodEntity).find({ order: { startsAt: "ASC" } });
+    assert.deepEqual(periods.map(p => [p.quantity, p.remaining]), [[12, 10], [15, 15]]);
+    assert.equal((await database.getRepository(ProductEntity).findOneByOrFail({ id: "a-plenty" })).stock, 15);
+  });
+
+  it("does not sell expired stock and can republish leftovers with zero additional units", async () => {
+    await expiredPeriod();
+    await assert.rejects(checkout().checkout("bob"), OutOfStockError);
+    assert.equal(await database.getRepository(OrderEntity).count(), 0);
+    assert.equal((await sales().publish("alice", "a-plenty", 0, future())).quantity, 10);
+    await checkout().checkout("bob");
+  });
+
+  it("rejects a stale checkout snapshot when its product enters a new period", async () => {
+    await database.query(`UPDATE products SET seller_id = 'alice' WHERE id = 'a-plenty'`);
+    const work = { execute: operation => unitOfWork.execute(async repositories => {
+      const fetch = repositories.products.fetchProductsByIds.bind(repositories.products);
+      repositories.products.fetchProductsByIds = async ids => {
+        const products = await fetch(ids);
+        await sales().publish("alice", "a-plenty", 5, future());
+        return products;
+      };
+      return operation(repositories);
+    }) };
+    await assert.rejects(checkout(work).checkout("bob"), OutOfStockError);
+    assert.equal(await database.getRepository(OrderEntity).count(), 0);
+    assert.equal((await database.getRepository(SalesPeriodEntity).findOneByOrFail({ productId: "a-plenty" })).remaining, 15);
+  });
+
+  it("rolls back product creation when publication fails and rejects invalid stock and dates", async () => {
+    await assert.rejects(sales().create("alice", { ...productInput, categoryId: "missing" }, future()), NotFoundError);
+    await assert.rejects(sales().create("alice", { ...productInput, stock: 0 }, future()));
+    await assert.rejects(sales().publish("alice", "a-plenty", -1, future()));
+    await assert.rejects(sales().publish("alice", "a-plenty", 1, new Date(0)));
+    assert.equal(await database.getRepository(SalesPeriodEntity).count(), 0);
+    assert.equal(await database.getRepository(ProductEntity).count(), 2);
   });
 
   async function stocks() {

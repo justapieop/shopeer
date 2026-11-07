@@ -24,7 +24,7 @@ export class ProductResponseDto {
       description: product.description,
       price: product.price,
       categoryId: product.categoryId,
-      stock: product.stock,
+      stock: product.hasEnoughStock(1) ? product.stock : 0,
       imageUrl: product.imageUrl,
     };
   }

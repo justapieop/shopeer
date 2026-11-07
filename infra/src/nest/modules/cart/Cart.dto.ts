@@ -46,7 +46,7 @@ export class CartLineResponseDto {
       unitPrice: line.product.price,
       quantity: line.item.quantity,
       subtotal: line.subtotal,
-      stock: line.product.stock,
+      stock: line.product.hasEnoughStock(1) ? line.product.stock : 0,
     };
   }
 }

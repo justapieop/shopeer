@@ -32,11 +32,14 @@ export class ProductController {
   @ApiErrors({ status: 404, description: "The requested category does not exist." })
   @ApiErrors({ status: 400, description: "Invalid pagination parameters." })
   public async listProducts(@Query() pagination: PaginationQueryDto, @Query("categoryId") categoryId?: string): Promise<ProductResponseDto[]> {
-    const key: string = JSON.stringify([categoryId || null, pagination.page, pagination.limit]);
-    return this.cacheManager.getOrLoad("catalog:products", key, async () => {
-      const products: Product[] = await this.productUseCase.listProducts(categoryId || undefined, pagination);
-      return products.map(ProductResponseDto.from);
-    });
+    const key = JSON.stringify([categoryId || null, pagination.page, pagination.limit]);
+    // Cache serializable snapshots; class methods and Date objects may not survive the cache store.
+    const products = await this.cacheManager.getOrLoad("catalog:products", key, async () =>
+      (await this.productUseCase.listProducts(categoryId || undefined, pagination)).map((product) => ({
+        response: ProductResponseDto.from(product), endsAt: product.saleEndsAt?.toISOString() ?? null,
+      })));
+    return products.map(({ response, endsAt }) => endsAt && Date.parse(endsAt) <= Date.now()
+      ? { ...response, stock: 0 } : response);
   }
 
   @Get("/:productId")

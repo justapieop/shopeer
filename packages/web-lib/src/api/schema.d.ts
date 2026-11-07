@@ -4,34 +4,41 @@
  */
 
 export interface paths {
-    "/user/me": {
+    "/seller/products": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get the authenticated user's profile */
-        get: operations["UserController_getMe"];
+        /** List your products and recent sales periods */
+        get: operations["SellerProductController_list"];
         put?: never;
-        post?: never;
+        /**
+         * Post a new product and publish its first sales period
+         * @description Starts immediately. Product ownership comes from the authenticated seller. Published stock and terms cannot be edited.
+         */
+        post: operations["SellerProductController_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/user/{id}": {
+    "/seller/products/{productId}/periods": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get a public user profile */
-        get: operations["UserController_getUser"];
+        get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Publish another sales period
+         * @description Starts immediately once the previous period has ended or sold out. Quantity is remaining stock plus additionalStock. Concurrent publications are serialized; published quantities cannot be edited.
+         */
+        post: operations["SellerProductController_publish"];
         delete?: never;
         options?: never;
         head?: never;
@@ -89,83 +96,6 @@ export interface paths {
          * @description Validates the refresh_token cookie and the current user, then sets a new one-hour access_token cookie. The refresh token keeps its original expiry.
          */
         post: operations["AuthController_refresh"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List products
-         * @description Returns a page of products sorted by name then ID, optionally filtered by category. Defaults to page 1 with 20 results; maximum limit is 100.
-         */
-        get: operations["ProductController_listProducts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/products/{productId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a product */
-        get: operations["ProductController_getProduct"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/products/{productId}/seller": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Assign a product seller
-         * @description Super only. Target must be an active user with Sell permission. Only future checkout lines use the new assignment; historical order ownership never changes.
-         */
-        put: operations["ProductOwnershipController_assign"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/categories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List categories
-         * @description Returns all categories sorted by name.
-         */
-        get: operations["CategoryController_listCategories"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -325,6 +255,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/products/{productId}/seller": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Assign a product seller
+         * @description Super only. Target must be an active user with Sell permission. Only future checkout lines use the new assignment; historical order ownership never changes.
+         */
+        put: operations["ProductOwnershipController_assign"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List products
+         * @description Returns a page of products sorted by name then ID, optionally filtered by category. Defaults to page 1 with 20 results; maximum limit is 100.
+         */
+        get: operations["ProductController_listProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a product */
+        get: operations["ProductController_getProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List categories
+         * @description Returns all categories sorted by name.
+         */
+        get: operations["CategoryController_listCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/user/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the authenticated user's profile */
+        get: operations["UserController_getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/user/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a public user profile */
+        get: operations["UserController_getUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -344,18 +385,41 @@ export interface components {
              */
             productIds?: string[];
         };
-        UserResponseDto: {
-            /** @example user-1 */
+        SalesPeriodResponseDto: {
             id: string;
-            /** @example alice */
-            username: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-20T08:00:00.000Z
-             */
-            createdAt: string;
-            /** @example false */
-            suspended: boolean;
+            productId: string;
+            quantity: number;
+            remaining: number;
+            additionalStock: number;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+        };
+        SellerProductResponseDto: {
+            productId: string;
+            name: string;
+            price: number;
+            /** @description Remaining stock, including units awaiting a new period. */
+            stock: number;
+            /** @description The latest 20 periods, newest first. */
+            periods: components["schemas"]["SalesPeriodResponseDto"][];
+        };
+        PostProductDto: {
+            name: string;
+            description: string;
+            price: number;
+            categoryId: string;
+            stock: number;
+            imageUrl: string;
+            /** Format: date-time */
+            endsAt: string;
+        };
+        PublishPeriodDto: {
+            /** @description Additional units, added to the previous period's leftover stock. */
+            additionalStock: number;
+            /** Format: date-time */
+            endsAt: string;
         };
         UserRegistrationDto: {
             /**
@@ -391,39 +455,6 @@ export interface components {
              * @example ExamplePass1!
              */
             password: string;
-        };
-        ProductResponseDto: {
-            /** @example product-1 */
-            productId: string;
-            /** @example Notebook */
-            name: string;
-            /** @example A lined notebook. */
-            description: string;
-            /**
-             * Format: int64
-             * @description Price per unit in VND.
-             * @example 25000
-             */
-            price: number;
-            /** @example category-1 */
-            categoryId: string;
-            /** @example 10 */
-            stock: number;
-            /** @example https://example.com/notebook.jpg */
-            imageUrl: string;
-        };
-        AssignSellerDto: {
-            sellerId: string;
-        };
-        ProductSellerResponseDto: {
-            productId: string;
-            sellerId: string;
-        };
-        CategoryResponseDto: {
-            /** @example category-1 */
-            categoryId: string;
-            /** @example Stationery */
-            name: string;
         };
         CartLineResponseDto: {
             /** @example product-1 */
@@ -520,6 +551,52 @@ export interface components {
             totalAmount: number;
             items: components["schemas"]["OrderItemResponseDto"][];
         };
+        AssignSellerDto: {
+            sellerId: string;
+        };
+        ProductSellerResponseDto: {
+            productId: string;
+            sellerId: string;
+        };
+        ProductResponseDto: {
+            /** @example product-1 */
+            productId: string;
+            /** @example Notebook */
+            name: string;
+            /** @example A lined notebook. */
+            description: string;
+            /**
+             * Format: int64
+             * @description Price per unit in VND.
+             * @example 25000
+             */
+            price: number;
+            /** @example category-1 */
+            categoryId: string;
+            /** @example 10 */
+            stock: number;
+            /** @example https://example.com/notebook.jpg */
+            imageUrl: string;
+        };
+        CategoryResponseDto: {
+            /** @example category-1 */
+            categoryId: string;
+            /** @example Stationery */
+            name: string;
+        };
+        UserResponseDto: {
+            /** @example user-1 */
+            id: string;
+            /** @example alice */
+            username: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-20T08:00:00.000Z
+             */
+            createdAt: string;
+            /** @example false */
+            suspended: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -529,25 +606,36 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    UserController_getMe: {
+    SellerProductController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Current user fields; excludes credentials and internal domain details. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponseDto"];
+                    "application/json": components["schemas"]["SellerProductResponseDto"][];
                 };
             };
-            /** @description Missing, invalid, or expired access token, or the user no longer exists. */
+            /** @description Invalid input. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Authentication required. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -556,7 +644,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description The authenticated user is suspended. */
+            /** @description Active account with Sell permission required. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -565,7 +653,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description An unexpected server error occurred. */
+            /** @description Unexpected server error. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -576,28 +664,55 @@ export interface operations {
             };
         };
     };
-    UserController_getUser: {
+    SellerProductController_create: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @description User ID. */
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostProductDto"];
+            };
+        };
         responses: {
-            /** @description Public user fields; excludes credentials and internal domain details. */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponseDto"];
+                    "application/json": components["schemas"]["SalesPeriodResponseDto"];
                 };
             };
-            /** @description The user does not exist. */
+            /** @description Invalid input. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Active account with Sell permission required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Category not found. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -606,7 +721,86 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
-            /** @description An unexpected server error occurred. */
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    SellerProductController_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishPeriodDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesPeriodResponseDto"];
+                };
+            };
+            /** @description Invalid input. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Active account with Sell permission required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Product not found or belongs to another seller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description The current period has not ended. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Unexpected server error. */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -747,194 +941,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description An unexpected server error occurred. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-        };
-    };
-    ProductController_listProducts: {
-        parameters: {
-            query?: {
-                page?: number;
-                limit?: number;
-                /** @description Category ID; omit to list every product. */
-                categoryId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductResponseDto"][];
-                };
-            };
-            /** @description Invalid pagination parameters. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description The requested category does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description An unexpected server error occurred. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-        };
-    };
-    ProductController_getProduct: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductResponseDto"];
-                };
-            };
-            /** @description The product does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description An unexpected server error occurred. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-        };
-    };
-    ProductOwnershipController_assign: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AssignSellerDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductSellerResponseDto"];
-                };
-            };
-            /** @description Invalid input or target is not an active seller. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description Authentication required. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description Super permission required. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description Product or seller not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-            /** @description Unexpected server error. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
-                };
-            };
-        };
-    };
-    CategoryController_listCategories: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CategoryResponseDto"][];
                 };
             };
             /** @description An unexpected server error occurred. */
@@ -1557,6 +1563,282 @@ export interface operations {
                 };
             };
             /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    ProductOwnershipController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignSellerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductSellerResponseDto"];
+                };
+            };
+            /** @description Invalid input or target is not an active seller. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Super permission required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Product or seller not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description Unexpected server error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    ProductController_listProducts: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Category ID; omit to list every product. */
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponseDto"][];
+                };
+            };
+            /** @description Invalid pagination parameters. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description The requested category does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    ProductController_getProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponseDto"];
+                };
+            };
+            /** @description The product does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    CategoryController_listCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryResponseDto"][];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    UserController_getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current user fields; excludes credentials and internal domain details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+            /** @description Missing, invalid, or expired access token, or the user no longer exists. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description The authenticated user is suspended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    UserController_getUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User ID. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public user fields; excludes credentials and internal domain details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+            /** @description The user does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
             500: {
                 headers: {
                     [name: string]: unknown;

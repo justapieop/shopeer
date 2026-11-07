@@ -1,5 +1,6 @@
 export function returnDestination(params: URLSearchParams): string {
   const next = params.get("next");
+  if (next === "seller-products") return "/seller/products";
   if (next === "store") return "/store";
   if (next === "cart") return "/cart";
   if (next === "orders" || next === "seller-orders") {

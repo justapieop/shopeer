@@ -176,3 +176,16 @@ linked as a dependency and configured for source transpilation by Next.js.
   Wait until mounted before rendering UI based on the current theme.
 
 HeroUI v3 uses CSS animations and does not require Framer Motion.
+
+## Seller products
+
+`/seller/products` lets authenticated sellers post products and view their sales
+history. The API enforces Sell permission and product ownership. Published quantity
+and product details are locked. A period starts immediately and lasts until its
+chosen end time; once it ends or sells out, the seller can publish leftovers plus
+additional stock in a new period. Dates in the form use the seller's local time.
+
+Writes are serialized in the UI. After an uncertain network result, publishing
+stays disabled until the seller refreshes and reviews the latest products. Login
+returns to this screen through an allowlisted destination. The API must be rebuilt
+and restarted to apply the sales-period migration and expose the new endpoints.

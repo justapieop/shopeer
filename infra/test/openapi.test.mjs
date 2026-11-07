@@ -4,7 +4,7 @@ import { after, before, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
 import { ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { AuthorizationUseCase, CartUseCase, OrderUseCase, ProductUseCase, ProductOwnershipUseCase, UserUseCase } from "@shopeer/case";
+import { SalesUseCase, AuthorizationUseCase, CartUseCase, OrderUseCase, ProductUseCase, ProductOwnershipUseCase, UserUseCase } from "@shopeer/case";
 import { User } from "@shopeer/domain";
 import request from "supertest";
 import { createOpenApiDocument, setupOpenApi } from "../dist/nest/openapi.js";
@@ -20,7 +20,10 @@ import { UserPipe } from "../dist/nest/common/decorators/User.decorator.js";
 import { SellerOrderController } from "../dist/nest/modules/order/SellerOrder.controller.js";
 import { ProductOwnershipController } from "../dist/nest/modules/product/ProductOwnership.controller.js";
 
+import { SellerProductController } from "../dist/nest/modules/product/SellerProduct.controller.js";
+
 const routes = [
+  ["get", "/seller/products", "200"], ["post", "/seller/products", "201"], ["post", "/seller/products/{productId}/periods", "201"],
   ["post", "/auth/register", "201"], ["post", "/auth/login", "201"],
   ["post", "/auth/refresh", "200"],
   ["get", "/user/{id}", "200"], ["get", "/user/me", "200"],
@@ -39,9 +42,10 @@ describe("OpenAPI documentation", () => {
 
   before(async () => {
     const module = await Test.createTestingModule({
-      controllers: [AuthController, CartController, OrderController, SellerOrderController, ProductOwnershipController, ProductController, CategoryController, UserController],
+      controllers: [SellerProductController, AuthController, CartController, OrderController, SellerOrderController, ProductOwnershipController, ProductController, CategoryController, UserController],
       providers: [
         UserPipe,
+        { provide: SalesUseCase, useValue: {} },
         { provide: ProductOwnershipUseCase, useValue: {} },
         { provide: AuthorizationUseCase, useValue: { hasPermissions: async () => true } },
         { provide: AuthService, useValue: { registration: async () => storedUser, login: async () => storedUser, signToken: () => "signed-jwt", signRefreshToken: () => "signed-refresh-jwt" } },
