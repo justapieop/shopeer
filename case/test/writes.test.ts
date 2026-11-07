@@ -1,4 +1,4 @@
-import { CartItem, Category, Transaction } from "@shopeer/domain";
+import { Cart, CartItem, Category, Transaction } from "@shopeer/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CartItemUseCase } from "../src/cartItem.js";
 import { CategoryUseCase } from "../src/category.js";
@@ -22,8 +22,10 @@ describe("save use cases", () => {
     categories = new InMemoryCategoryRepository();
     cartItems = new InMemoryCartItemRepository();
     const products = new InMemoryProductRepository();
+    const carts = new InMemoryCartRepository();
+    carts.save(new Cart({ cartId: "cart", userId: "buyer" }));
     unitOfWork = new InMemoryUnitOfWork(
-      new InMemoryCartRepository(), cartItems, products,
+      carts, cartItems, products,
       new InMemoryOrderRepository(products, cartItems), users, categories,
     );
   });
@@ -85,12 +87,19 @@ describe("save use cases", () => {
 
   it("saves cart items through the scope and rolls back failed updates", async () => {
     const item = new CartItem({ itemId: "line", cartId: "cart", productId: "product", quantity: 1 });
+    cartItems.save(item);
     const useCase = new CartItemUseCase(unitOfWork, readProvider(cartItems));
     expect(await useCase.save(item)).toBe(item);
     expect(await useCase.fetchCartItemByItemId("line")).toBe(item);
     const failure = new Error("commit failed");
     await expect(new CartItemUseCase(lateFailure(failure), cartItems).save(item.withQuantity(2))).rejects.toBe(failure);
     expect(cartItems.fetchCartItemByItemId("line")).toBe(item);
+  });
+
+  it("does not recreate a removed cart line through the legacy save entry point", async () => {
+    const stale = new CartItem({ itemId: "removed", cartId: "cart", productId: "product", quantity: 2 });
+    await expect(new CartItemUseCase(unitOfWork, cartItems).save(stale)).rejects.toThrow("Cart changed");
+    expect(cartItems.items.size).toBe(0);
   });
 
   it("uses the supplied payment transaction scope and propagates its commit failure", async () => {

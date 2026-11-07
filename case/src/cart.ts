@@ -1,6 +1,7 @@
 import {
   Cart,
   CartItem,
+  CartChangedError,
   NotFoundError,
   OutOfStockError,
   type Product,
@@ -79,7 +80,7 @@ export class CartUseCase {
       const existing: CartItem | null = await repositories.cartItems.fetchCartItem(cart.cartId, productId);
 
       if (!existing) {
-        throw new NotFoundError(`Product ${productId} is not in the cart`);
+        throw new CartChangedError();
       }
 
       // Validates `quantity` before touching the database.
@@ -90,7 +91,9 @@ export class CartUseCase {
         throw new OutOfStockError([productId]);
       }
 
-      await repositories.cartItems.save(updated);
+      if (!await repositories.cartItems.updateQuantity(updated)) {
+        throw new CartChangedError();
+      }
 
       return await this.buildView(cart, repositories);
     });
@@ -121,6 +124,7 @@ export class CartUseCase {
     const existing: Cart | null = await repositories.carts.fetchCartByUserId(userId);
 
     if (existing) {
+      await repositories.carts.lockCart(existing.cartId);
       return existing;
     }
 
@@ -132,10 +136,12 @@ export class CartUseCase {
 
     // insertIfAbsent (not save) because two requests of the same user may get
     // here at the same time; the repository guarantees a single cart.
-    return await repositories.carts.insertIfAbsent(new Cart({
+    const cart = await repositories.carts.insertIfAbsent(new Cart({
       cartId: this.idGenerator.generate(),
       userId,
     }));
+    await repositories.carts.lockCart(cart.cartId);
+    return cart;
   }
 
   private async getProduct(productId: string, repositories: RepositorySet): Promise<Product> {

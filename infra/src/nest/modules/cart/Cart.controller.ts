@@ -87,12 +87,12 @@ export class CartController {
     { status: 400, description: "Quantity must be a positive integer." },
     {
       status: 404,
-      description: "The cart line, product, or user does not exist.",
+      description: "The product or user does not exist.",
     },
     {
       status: 409,
       description:
-        "Insufficient stock for the requested quantity. Includes productIds.",
+        "The cart line was removed or replaced, or stock is insufficient. Stock conflicts include productIds.",
     },
   )
   public async updateItem(

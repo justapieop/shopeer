@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Cart } from "@shopeer/domain";
+import { Cart, NotFoundError } from "@shopeer/domain";
 import type { CartRepository } from "@shopeer/case";
 import { Column, Entity, PrimaryColumn, Repository } from "typeorm";
 import { requireTransaction } from "../../../database/requireTransaction.js";
@@ -28,6 +28,14 @@ export class TypeOrmCartRepository implements CartRepository {
     @InjectRepository(CartEntity)
     private readonly cartRepository: Repository<CartEntity>,
   ) { }
+
+  public async lockCart(cartId: string): Promise<void> {
+    requireTransaction(this.cartRepository.manager);
+    const cart = await this.cartRepository.findOne({
+      where: { id: cartId }, lock: { mode: "pessimistic_write" },
+    });
+    if (!cart) throw new NotFoundError(`Cart ${cartId} not found`);
+  }
 
   public async save(cart: Cart): Promise<Cart> {
     requireTransaction(this.cartRepository.manager);

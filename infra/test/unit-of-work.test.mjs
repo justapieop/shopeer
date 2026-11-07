@@ -101,9 +101,11 @@ describe("TypeOrmUnitOfWork", () => {
   });
 
   for (const [name, Entity, Adapter, method, args] of [
+    ["cart lock", CartEntity, TypeOrmCartRepository, "lockCart", ["cart"]],
     ["cart save", CartEntity, TypeOrmCartRepository, "save", [{}]],
     ["cart creation", CartEntity, TypeOrmCartRepository, "insertIfAbsent", [{}]],
     ["cart item save", CartItemEntity, TypeOrmCartItemRepository, "save", [{}]],
+    ["cart quantity update", CartItemEntity, TypeOrmCartItemRepository, "updateQuantity", [{}]],
     ["cart item upsert", CartItemEntity, TypeOrmCartItemRepository, "addOrIncreaseQuantity", [{}]],
     ["cart item deletion", CartItemEntity, TypeOrmCartItemRepository, "deleteCartItem", ["cart", "product"]],
     ["cart clearing", CartItemEntity, TypeOrmCartItemRepository, "deleteCartItemsByCartId", ["cart"]],

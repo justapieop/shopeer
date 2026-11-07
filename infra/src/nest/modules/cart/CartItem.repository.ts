@@ -43,6 +43,14 @@ export class TypeOrmCartItemRepository implements CartItemRepository {
     return toDomain(await this.cartItemRepository.save(toEntity(cartItem)));
   }
 
+  public async updateQuantity(cartItem: CartItem): Promise<boolean> {
+    requireTransaction(this.cartItemRepository.manager);
+    const result = await this.cartItemRepository.update({
+      id: cartItem.itemId, cartId: cartItem.cartId, productId: cartItem.productId,
+    }, { quantity: cartItem.quantity });
+    return (result.affected ?? 0) > 0;
+  }
+
   public async fetchCartItemByItemId(itemId: string): Promise<CartItem | null> {
     const entity: CartItemEntity | null = await this.cartItemRepository.findOneBy({ id: itemId, });
     return entity ? toDomain(entity) : null;

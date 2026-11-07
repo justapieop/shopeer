@@ -48,6 +48,9 @@ export class OrderUseCase {
       throw new EmptyCartError();
     }
 
+    // All cart writes take this same lock before reading any cart lines.
+    await carts.lockCart(cart.cartId);
+
     const items: CartItem[] =
       await cartItems.fetchCartItemsByCartId(cart.cartId);
 

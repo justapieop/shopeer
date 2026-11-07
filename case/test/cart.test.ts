@@ -1,4 +1,4 @@
-import { InvalidParametersError, NotFoundError, OutOfStockError } from "@shopeer/domain";
+import { CartChangedError, InvalidParametersError, NotFoundError, OutOfStockError } from "@shopeer/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CartUseCase, type CartView } from "../src/cart.js";
 import {
@@ -33,6 +33,39 @@ describe("CartUseCase", () => {
     users.save(makeUser("alice"));
     products.save(makeProduct("shirt", 100_000, 10));
     products.save(makeProduct("book", 50_000, 1));
+  });
+
+  for (const [name, mutate] of [
+    ["add", (cart: CartUseCase) => cart.addItem("alice", "shirt", 1)],
+    ["edit", (cart: CartUseCase) => cart.updateItemQuantity("alice", "shirt", 2)],
+    ["remove", (cart: CartUseCase) => cart.removeItem("alice", "shirt")],
+    ["clear", (cart: CartUseCase) => cart.clearCart("alice")],
+  ] as const) {
+    it(`waits for the cart lock before a ${name} can change its contents`, async () => {
+      const initial = await useCase.addItem("alice", "shirt", 1);
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      vi.spyOn(carts, "lockCart").mockImplementation(() => gate);
+      const operation = mutate(useCase);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(cartItems.fetchCartItemsByCartId(initial.cart.cartId).map((line) => line.quantity)).toEqual([1]);
+      release();
+      await operation;
+      const lines = cartItems.fetchCartItemsByCartId(initial.cart.cartId);
+      expect(lines.map((line) => line.quantity)).toEqual(name === "add" || name === "edit" ? [2] : []);
+    });
+  }
+
+  it("reports a conflict instead of reinserting a line removed after it was read", async () => {
+    const initial = await useCase.addItem("alice", "shirt", 1);
+    const fetch = products.fetchProductById.bind(products);
+    vi.spyOn(products, "fetchProductById").mockImplementation((id) => {
+      cartItems.deleteCartItem(initial.cart.cartId, "shirt");
+      return fetch(id);
+    });
+    await expect(useCase.updateItemQuantity("alice", "shirt", 2)).rejects.toBeInstanceOf(CartChangedError);
+    // The fake UoW rolls its simulated deletion back along with the failed edit.
+    expect(cartItems.fetchCartItemsByCartId(initial.cart.cartId).map((line) => line.quantity)).toEqual([1]);
   });
 
   describe("getCart", () => {
@@ -123,7 +156,7 @@ describe("CartUseCase", () => {
     });
 
     it("rejects a product that is not in the cart", async () => {
-      await expect(useCase.updateItemQuantity("alice", "shirt", 1)).rejects.toBeInstanceOf(NotFoundError);
+      await expect(useCase.updateItemQuantity("alice", "shirt", 1)).rejects.toBeInstanceOf(CartChangedError);
     });
 
     it("rejects more than the stock", async () => {

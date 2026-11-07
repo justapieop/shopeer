@@ -11,7 +11,7 @@ import { AuthService } from "../dist/nest/modules/auth/Auth.service.js";
 import { AuthController } from "../dist/nest/modules/auth/Auth.controller.js";
 import { DomainErrorFilter } from "../dist/nest/common/filters/DomainError.filter.js";
 import { CartUseCase, OrderUseCase, UserUseCase } from "@shopeer/case";
-import { CartChangedError, OutOfStockError, Permission, Role } from "@shopeer/domain";
+import { CartChangedError, EmptyCartError, NotFoundError, OutOfStockError, Permission, Role } from "@shopeer/domain";
 import { TypeOrmUnitOfWork } from "../dist/database/TypeOrmUnitOfWork.js";
 import { CartEntity } from "../dist/nest/modules/cart/Cart.repository.js";
 import { CartItemEntity } from "../dist/nest/modules/cart/CartItem.repository.js";
@@ -84,6 +84,121 @@ describe("Unit of Work with PostgreSQL", {
     const products = await database.getRepository(ProductEntity).find({ order: { id: "ASC" } });
     return products.map((product) => product.stock);
   }
+
+  // Hold one operation after it owns the parent lock. Confirm PostgreSQL has
+  // actually blocked the other operation before releasing it (no timing guess).
+  async function raceSameCart(firstOperation, secondOperation) {
+    const deferred = () => {
+      let resolve;
+      const promise = new Promise((done) => { resolve = done; });
+      return { promise, resolve };
+    };
+    const held = deferred(), release = deferred(), waiting = deferred();
+    const wrap = (hold) => ({
+      execute: (work) => unitOfWork.execute(async (repositories) => {
+        const lock = repositories.carts.lockCart.bind(repositories.carts);
+        repositories.carts.lockCart = async (cartId) => {
+          if (!hold) {
+            const [{ pid }] = await repositories.carts.cartRepository.manager.query(`SELECT pg_backend_pid() AS pid`);
+            waiting.resolve(pid);
+          }
+          await lock(cartId);
+          if (hold) { held.resolve(); await release.promise; }
+        };
+        return work(repositories);
+      }),
+    });
+    const first = firstOperation(wrap(true));
+    // Surface an early failure instead of waiting forever for the lock hook.
+    await Promise.race([held.promise, first.then(() => { throw new Error("First operation did not lock the cart"); })]);
+    const second = secondOperation(wrap(false));
+    let failure;
+    try {
+      const pid = await Promise.race([waiting.promise, second.then(() => { throw new Error("Second operation did not lock the cart"); })]);
+      const deadline = Date.now() + 5_000;
+      while (true) {
+        const [{ blocked }] = await database.query(`SELECT cardinality(pg_blocking_pids($1::int)) > 0 AS blocked`, [pid]);
+        if (blocked) break;
+        assert.ok(Date.now() < deadline, "The second operation must wait for the parent cart lock");
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    } catch (error) { failure = error; }
+    finally { release.resolve(); }
+    const results = await Promise.allSettled([first, second]);
+    if (failure) throw failure;
+    return results;
+  }
+
+  for (const [name, mutate, afterCheckoutError, remainingQuantity, purchasedQuantity] of [
+    ["quantity edit", (cart) => cart.updateItemQuantity("alice", "a-plenty", 2), CartChangedError, 0, 2],
+    ["addition", (cart) => cart.addItem("alice", "a-plenty", 1), null, 1, 2],
+    ["removal", (cart) => cart.removeItem("alice", "a-plenty"), NotFoundError, 0, 0],
+    ["clear", (cart) => cart.clearCart("alice"), null, 0, null],
+  ]) {
+    it(`serializes checkout before a concurrent ${name}`, async () => {
+      const [purchase, edit] = await raceSameCart(
+        (work) => checkout(work).checkout("alice"),
+        (work) => mutate(new CartUseCase(work, ids)),
+      );
+      assert.equal(purchase.status, "fulfilled");
+      assert.equal(purchase.value.items.find((item) => item.productId === "a-plenty").quantity, 1);
+      if (afterCheckoutError) assert.ok(edit.reason instanceof afterCheckoutError);
+      else assert.equal(edit.status, "fulfilled");
+      const lines = await database.getRepository(CartItemEntity).findBy({ cartId: "cart-alice" });
+      assert.equal(lines.reduce((sum, line) => sum + line.quantity, 0), remainingQuantity);
+      assert.deepEqual(await stocks(), [9, 0]);
+      assert.equal(await database.getRepository(OrderEntity).count(), 1);
+    });
+
+    it(`serializes a ${name} before concurrent checkout`, async () => {
+      const [edit, purchase] = await raceSameCart(
+        (work) => mutate(new CartUseCase(work, ids)),
+        (work) => checkout(work).checkout("alice"),
+      );
+      assert.equal(edit.status, "fulfilled");
+      if (purchasedQuantity === null) {
+        assert.ok(purchase.reason instanceof EmptyCartError);
+        assert.equal(await database.getRepository(OrderEntity).count(), 0);
+        assert.deepEqual(await stocks(), [10, 1]);
+      } else {
+        assert.equal(purchase.status, "fulfilled");
+        const product = purchase.value.items.find((item) => item.productId === "a-plenty");
+        assert.equal(product?.quantity ?? 0, purchasedQuantity);
+        assert.deepEqual(await stocks(), [10 - purchasedQuantity, 0]);
+      }
+      assert.equal(await database.getRepository(CartItemEntity).countBy({ cartId: "cart-alice" }), 0);
+    });
+  }
+
+  it("allows only one of two simultaneous checkouts of the same cart", async () => {
+    const [first, second] = await raceSameCart(
+      (work) => checkout(work).checkout("alice"), (work) => checkout(work).checkout("alice"),
+    );
+    assert.equal(first.status, "fulfilled");
+    assert.ok(second.reason instanceof EmptyCartError);
+    assert.equal(await database.getRepository(OrderEntity).count(), 1);
+    assert.equal(await database.getRepository(CartItemEntity).countBy({ cartId: "cart-alice" }), 0);
+    assert.deepEqual(await stocks(), [9, 0]);
+  });
+
+  it("never inserts a removed line or edits its replacement through a stale quantity update", async () => {
+    const stale = await unitOfWork.execute(async ({ carts, cartItems }) => {
+      await carts.lockCart("cart-alice");
+      return cartItems.fetchCartItem("cart-alice", "a-plenty");
+    });
+    await checkout().checkout("alice");
+    const staleUpdate = () => unitOfWork.execute(async ({ carts, cartItems }) => {
+      await carts.lockCart("cart-alice");
+      return cartItems.updateQuantity(stale.withQuantity(5));
+    });
+    assert.equal(await staleUpdate(), false);
+    assert.equal(await database.getRepository(CartItemEntity).countBy({ cartId: "cart-alice" }), 0);
+    await new CartUseCase(unitOfWork, ids).addItem("alice", "a-plenty", 2);
+    assert.equal(await staleUpdate(), false);
+    const replacement = await database.getRepository(CartItemEntity).findOneByOrFail({ cartId: "cart-alice", productId: "a-plenty" });
+    assert.equal(replacement.quantity, 2);
+    assert.notEqual(replacement.id, stale.itemId);
+  });
 
   it("commits the order, stock and cart together and reloads its cartId", async () => {
     const order = await checkout().checkout("alice");

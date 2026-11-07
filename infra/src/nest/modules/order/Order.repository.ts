@@ -121,7 +121,8 @@ export class TypeOrmOrderRepository implements OrderRepository {
     await manager.insert(OrderEntity, toOrderEntity(order));
     await manager.insert(OrderItemEntity, order.items.map(toOrderItemEntity));
 
-    // New products added during checkout remain in the cart.
+    // Remove only the purchased lines. Application additions wait on the parent
+    // cart lock and run after checkout commits.
     await manager.delete(CartItemEntity, {
       cartId,
       productId: In(items.map((item: OrderItem) => item.productId)),

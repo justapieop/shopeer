@@ -123,6 +123,10 @@ export class InMemoryProductRepository implements ProductRepository {
 }
 
 export class InMemoryCartRepository implements CartRepository {
+  // The in-memory adapter executes synchronously; database tests cover locking.
+  public lockCart(cartId: string): void | Promise<void> {
+    if (!this.carts.has(cartId)) throw new Error(`Cart ${cartId} not found`);
+  }
   public readonly carts: Map<string, Cart> = new Map();
 
   public save(cart: Cart): Cart {
@@ -144,6 +148,12 @@ export class InMemoryCartRepository implements CartRepository {
 }
 
 export class InMemoryCartItemRepository implements CartItemRepository {
+  public updateQuantity(item: CartItem): boolean {
+    const existing = this.items.get(item.itemId);
+    if (!existing || existing.cartId !== item.cartId || existing.productId !== item.productId) return false;
+    this.items.set(item.itemId, item);
+    return true;
+  }
   public readonly items: Map<string, CartItem> = new Map();
 
   public save(cartItem: CartItem): CartItem {

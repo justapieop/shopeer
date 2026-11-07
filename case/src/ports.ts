@@ -11,6 +11,8 @@ import type {
 } from "@shopeer/domain";
 
 export interface CartRepository {
+  /** Lock the parent cart until transaction end, before reading or changing lines. */
+  lockCart(cartId: string): void | Promise<void>;
   save(cart: Cart): Cart | Promise<Cart>;
   fetchCartById(cartId: string): Cart | null | Promise<Cart | null>;
   fetchCartByUserId(userId: string): Cart | null | Promise<Cart | null>;
@@ -24,6 +26,8 @@ export interface CartRepository {
 
 export interface CartItemRepository {
   save(cartItem: CartItem): CartItem | Promise<CartItem>;
+  /** Update an existing line only; return false if it was removed or replaced. */
+  updateQuantity(cartItem: CartItem): boolean | Promise<boolean>;
   fetchCartItemByItemId(
     itemId: string,
   ): CartItem | null | Promise<CartItem | null>;
@@ -68,7 +72,8 @@ export interface OrderRepository {
    * 3. Saves the order with its items.
    * 4. Removes the ordered lines from the cart.
    *
-   * Requires a transaction-scoped repository. Let errors escape the callback
+   * Caller must lock the parent cart before reading its lines. Requires a
+   * transaction-scoped repository. Let errors escape the callback
    * so the Unit of Work rolls back all changes, including earlier operations.
    */
   placeOrder(order: Order, cartId: string): void | Promise<void>;

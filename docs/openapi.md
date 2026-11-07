@@ -67,6 +67,15 @@ login does not impose registration's password-strength rules.
 
 Prices, subtotals, and totals are integer VND amounts. Dates use ISO 8601 strings in the camelCase `createdAt` field. Cart quantity inputs must be positive integers. Adding to a cart checks stock without reserving it; checkout reserves stock inside a transaction.
 
+Checkout and cart operations lock the parent cart row before reading its lines,
+so requests for one cart run sequentially. A quantity edit that waits until
+checkout finishes returns 409 when its line has been purchased; a removal of an
+absent line returns 404. Quantity edits use an update-only query; a removed or
+replaced line cannot be recreated by a stale edit. Explicit additions that
+run after checkout are new cart contents. A second checkout of the same emptied
+cart returns 409. Stock updates across different buyers remain conditional and
+transactional.
+
 Errors contain `statusCode`, `error`, and `message`. Validation can return an array of messages. Stock conflicts additionally contain `productIds`. Route documentation lists the applicable HTTP status codes, including 401/403 for protected routes and 409 for cart or stock conflicts.
 
 Setup follows the [NestJS OpenAPI documentation](https://docs.nestjs.com/openapi/introduction).
