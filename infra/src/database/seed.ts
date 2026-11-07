@@ -7,7 +7,8 @@ import { runMigrations } from "./migrate.js";
 const SEED_FILE: string = join(import.meta.dirname, "../../seed/dev-seed.sql");
 
 /**
- * Loads the sample data: `pnpm db:seed`.
+ * Loads the sample data into the configured PostgreSQL database: `pnpm db:seed`.
+ * No application build, running server, or Docker startup is required.
  *
  * Runs the migrations first, so it also works on a brand-new database where
  * the server has never been started. Safe to run again: the seed file upserts

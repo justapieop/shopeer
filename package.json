@@ -10,8 +10,10 @@
     "start": "node apps/api/dist/index.js",
     "start:dev": "pnpm build && node apps/api/dist/index.js | pnpm dlx pino-pretty",
     "db:up": "docker compose up -d --wait",
-    "db:migrate": "pnpm db:up && pnpm build && node infra/dist/database/migrate.js",
-    "db:seed": "pnpm db:up && pnpm build && node infra/dist/database/seed.js",
+    "db:build": "pnpm --filter @shopeer/infra build:database",
+    "db:migrate": "pnpm db:up && pnpm db:build && node infra/dist/database/migrate.js",
+    "db:seed": "pnpm db:build && node infra/dist/database/seed.js",
+    "db:seed:local": "pnpm db:up && pnpm db:seed",
     "race": "node scripts/race-checkout.ts"
   },
   "devEngines": {

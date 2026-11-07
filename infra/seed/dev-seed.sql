@@ -1,6 +1,6 @@
 -- Sample data for local development and demos.
--- Loaded by `pnpm db:seed` (infra/src/database/seed.ts), which starts the
--- database and runs the migrations first, so the tables always exist.
+-- Loaded by `pnpm db:seed` (infra/src/database/seed.ts), which connects to the
+-- configured database and runs migrations first, so the tables always exist.
 -- Safe to run again: it resets these products (including their stock) and
 -- the owner account.
 

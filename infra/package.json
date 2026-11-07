@@ -11,6 +11,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "build:database": "tsc -p tsconfig.database.json",
     "build:watch": "tsc --watch --preserveWatchOutput",
     "test": "node --test test/*.test.mjs"
   },

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.build.json",
+  "include": [
+    "src/database/data-source.ts",
+    "src/database/migrate.ts",
+    "src/database/seed.ts",
+    "src/nest/modules/app/migrations/**/*.ts"
+  ]
+}
