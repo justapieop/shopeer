@@ -42,8 +42,9 @@ Nếu PostgreSQL đã chạy, dùng `pnpm db:seed` để tạo bảng và nạp 
 | `pnpm db:seed` | Kết nối PostgreSQL theo `.env`, chạy migration và nạp `infra/seed/dev-seed.sql`, không cần build/chạy hệ thống |
 | `pnpm db:seed:local` | Bật PostgreSQL trong Docker rồi chạy `db:seed` |
 | `pnpm build` | Build tất cả package |
+| `pnpm build:api` | Chỉ build backend và các dependency: domain, case, infra, apps/api |
 | `pnpm start` | Chạy server đã build |
-| `pnpm start:dev` | Build rồi chạy server, log dễ đọc |
+| `pnpm start:dev` | Chỉ build backend rồi chạy server, log dễ đọc; bỏ qua frontend |
 | `pnpm dev:web` | Chạy frontend tại http://localhost:3001 |
 | `pnpm build:web` | Build frontend Next.js |
 | `pnpm start:web` | Chạy frontend đã build tại http://localhost:3001 |
