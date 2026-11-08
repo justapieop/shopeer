@@ -18,7 +18,7 @@ export async function StorePage({ searchParams }: { searchParams: Promise<StoreS
     <StoreSession><div className={styles["page"]}>
       <header className={styles["header"]}>
         <Link href="/" className={styles["wordmark"]} aria-label="Shopeer home">shopeer</Link>
-        <nav aria-label="Main navigation"><Link href="/" prefetch={false}>Home</Link><Link href="/store" aria-current="page">Store</Link><Link href="/cart" prefetch={false}>Cart</Link><Link href="/orders" prefetch={false}>Orders</Link></nav>
+        <nav aria-label="Main navigation"><Link href="/" prefetch={false}>Home</Link><Link href="/store" aria-current="page">Store</Link><Link href="/cart" prefetch={false}>Cart</Link><Link href="/orders" prefetch={false}>Orders</Link><Link href="/handler/orders" prefetch={false}>Handler orders</Link></nav>
         <SessionStatus />
       </header>
       <main className={styles["main"]}>

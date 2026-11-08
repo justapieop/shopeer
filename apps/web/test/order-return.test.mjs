@@ -5,6 +5,8 @@ import { returnDestination } from "../src/_pages/login/lib/return-destination.ts
 test("returns buyers and sellers to their order after login", () => {
   assert.equal(returnDestination(new URLSearchParams("next=orders&orderId=placed-1")), "/orders/placed-1");
   assert.equal(returnDestination(new URLSearchParams("next=seller-orders&orderId=placed-1")), "/seller/orders/placed-1");
+  assert.equal(returnDestination(new URLSearchParams("next=handler-orders&orderId=placed-1")), "/handler/orders/placed-1");
+  assert.equal(returnDestination(new URLSearchParams("next=handler-orders")), "/handler/orders");
 });
 test("keeps login redirects on local allowlisted routes", () => {
   assert.equal(returnDestination(new URLSearchParams("next=https://evil.example")), "/");

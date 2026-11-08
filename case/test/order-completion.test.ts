@@ -16,6 +16,16 @@ function setup(status: Order["status"] = "pending") {
 }
 
 describe("two-step order completion", () => {
+  it("lists full orders across buyers with status filtering and pagination", async () => {
+    const { orders, useCase } = setup();
+    const original = orders.fetchOrderById("order")!;
+    orders.orders.set("other", new Order({ orderId: "other", userId: "other-buyer", cartId: "other-cart", status: "delivered", items: [new OrderItem({ orderItemId: "other-line", orderId: "other", productId: "other-product", unitPrice: 200, quantity: 1 })], createdAt: new Date(original.createdAt.getTime() + 1000) }));
+    expect((await useCase.listHandlerOrders()).map(order => order.orderId)).toEqual(["other", "order"]);
+    expect((await useCase.listHandlerOrders({ page: 1, limit: 20 }, "pending")).map(order => order.orderId)).toEqual(["order"]);
+    expect((await useCase.listHandlerOrders({ page: 2, limit: 1 })).map(order => order.orderId)).toEqual(["order"]);
+    expect((await useCase.getHandlerOrder("other")).userId).toBe("other-buyer");
+    await expect(useCase.getHandlerOrder("missing")).rejects.toBeInstanceOf(NotFoundError);
+  });
   it("requires handler delivery followed by buyer receipt, preserving the order contents", async () => {
     const { orders, useCase } = setup();
     const original = orders.fetchOrderById("order")!;

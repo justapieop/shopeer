@@ -60,6 +60,7 @@ export interface CategoryRepository {
 }
 
 export interface OrderRepository {
+  fetchHandlerOrders(pagination: Pagination, status?: Order["status"]): Order[] | Promise<Order[]>;
   /** Atomic compare-and-set inside UnitOfWork.execute; stale requests cannot overwrite a later state. */
   transitionStatus(orderId: string, from: Order["status"], to: Order["status"]): boolean | Promise<boolean>;
   fetchOrdersBySellerId(sellerId: string, pagination: Pagination): Order[] | Promise<Order[]>;

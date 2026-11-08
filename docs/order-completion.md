@@ -16,6 +16,10 @@ Requires an authenticated, active user with `EditAnyOrder`: the preset roles `or
 
 This moves an order from `pending` to `delivered`. Repeating the request for an already delivered or completed order returns its current state without moving it backward. The endpoint is available in Swagger UI at `/docs/`.
 
+Handlers can use **Handler orders** in the store or order navigation to open `/handler/orders`. The delivery queue defaults to orders awaiting delivery, with filters for awaiting buyer receipt, completed, cancelled, and all orders. Each order links to its full details. **Confirm delivery** updates the order and refreshes the queue; a delivered order waits for the buyer's receipt confirmation.
+
+The queue uses `GET /handler/orders` with pagination and an optional `status` filter. `GET /handler/orders/:orderId` returns full order details. Both require `EditAnyOrder`, reject suspended users, and disable response caching. Signing in returns handlers to the queue or the order they opened.
+
 ## Buyer confirmation
 
 `POST /orders/:orderId/confirm-receipt`

@@ -35,6 +35,7 @@ const routes = [
   ["get", "/seller/orders", "200"], ["get", "/seller/orders/{orderId}", "200"],
   ["put", "/admin/products/{productId}/seller", "200"],
   ["post", "/handler/orders/{orderId}/confirm-delivery", "200"],
+  ["get", "/handler/orders", "200"], ["get", "/handler/orders/{orderId}", "200"],
   ["post", "/orders/{orderId}/confirm-receipt", "200"],
 ];
 

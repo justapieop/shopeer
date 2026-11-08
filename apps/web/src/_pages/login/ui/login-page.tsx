@@ -23,7 +23,7 @@ export function LoginPage() {
   // before returning to a protected destination whose access cookie has expired.
   useEffect(() => {
     const destination = new URL(window.location.href).searchParams.get("next");
-    if (!["store", "cart", "orders", "seller-orders"].includes(destination ?? "")) return;
+    if (!["store", "cart", "orders", "seller-orders", "handler-orders"].includes(destination ?? "")) return;
     let active = true;
     void refresh(true).then(() => { if (active) setSessionChecked(true); });
     return () => { active = false; };

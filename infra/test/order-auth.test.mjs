@@ -2,6 +2,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
+import { ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { AuthorizationUseCase, OrderUseCase, UserUseCase } from "@shopeer/case";
 import { Order, OrderItem, Permission, Role, User } from "@shopeer/domain";
@@ -33,11 +34,14 @@ describe("order endpoint authorization", () => {
           getOrder: async (id) => { operations.push(["get", id]); return order; },
           confirmReceipt: async (id) => { operations.push(["receipt", id]); return order; },
           confirmDelivery: async (id) => { operations.push(["delivery", id]); return order; },
+          listHandlerOrders: async (query, status) => { operations.push(["handler-list", query.page, query.limit, status]); return [order]; },
+          getHandlerOrder: async (id) => { operations.push(["handler-get", id]); return order; },
         } },
       ],
     }).compile();
     app = module.createNestApplication({ logger: false });
     app.use(cookieParser());
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
   });
   after(async () => { await app?.close(); });
@@ -88,5 +92,28 @@ describe("order endpoint authorization", () => {
     suspended = true;
     await send().expect(403);
     assert.equal(operations.length, 3);
+  });
+
+  for (const path of ["/handler/orders", "/handler/orders/order"]) {
+    it(`protects the handler read endpoint ${path}`, async () => {
+      const send = () => request(app.getHttpServer()).get(path).set("Cookie", `access_token=${jwt.sign({ sub: "buyer" }, secret)}`);
+      await request(app.getHttpServer()).get(path).expect(401);
+      for (bits of [6n, 174n]) await send().expect(403);
+      assert.deepEqual(operations, []);
+      for (bits of [238n, 510n, 1n]) await send().expect(200);
+      suspended = true;
+      await send().expect(403);
+      assert.equal(operations.length, 3);
+    });
+  }
+
+  it("validates handler filters and pagination before reaching the use case", async () => {
+    bits = 238n;
+    const get = query => request(app.getHttpServer()).get(`/handler/orders${query}`).set("Cookie", `access_token=${jwt.sign({ sub: "buyer" }, secret)}`);
+    for (const query of ["?status=unknown", "?status=pending&status=delivered", "?page=0", "?limit=101"]) await get(query).expect(400);
+    assert.deepEqual(operations, []);
+    const response = await get("?status=pending&page=2&limit=10").expect(200);
+    assert.deepEqual(operations, [["handler-list", 2, 10, "pending"]]);
+    assert.equal(response.headers["cache-control"], "no-store");
   });
 });

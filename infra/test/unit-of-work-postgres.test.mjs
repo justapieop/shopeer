@@ -92,6 +92,9 @@ describe("Unit of Work with PostgreSQL", {
     await assert.rejects(useCase.confirmReceipt("alice", placed.orderId), /handler must confirm delivery/);
     await Promise.all([useCase.confirmDelivery(placed.orderId), useCase.confirmDelivery(placed.orderId)]);
     assert.equal((await useCase.getOrder("alice", placed.orderId)).status, "delivered");
+    assert.deepEqual((await useCase.listHandlerOrders({ page: 1, limit: 20 }, "delivered")).map(order => order.orderId), [placed.orderId]);
+    assert.deepEqual(await useCase.listHandlerOrders({ page: 1, limit: 20 }, "pending"), []);
+    assert.equal((await useCase.getHandlerOrder(placed.orderId)).items.length, placed.items.length);
     await assert.rejects(useCase.confirmReceipt("bob", placed.orderId), NotFoundError);
     await Promise.all([useCase.confirmReceipt("alice", placed.orderId), useCase.confirmReceipt("alice", placed.orderId)]);
     assert.equal((await useCase.confirmDelivery(placed.orderId)).status, "completed");

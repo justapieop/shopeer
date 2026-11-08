@@ -24,6 +24,18 @@ export class OrderUseCase {
     private readonly idGenerator: IdGenerator,
   ) {}
 
+  /** The handler HTTP adapter requires EditAnyOrder for these cross-buyer reads. */
+  public async listHandlerOrders(pagination: Pagination = { page: 1, limit: 20 }, status?: Order["status"]): Promise<Order[]> {
+    paginationOffset(pagination);
+    return this.orderRepository.fetchHandlerOrders(pagination, status);
+  }
+
+  public async getHandlerOrder(orderId: string): Promise<Order> {
+    const order = await this.orderRepository.fetchOrderById(orderId);
+    if (!order) throw new NotFoundError(`Order ${orderId} not found`);
+    return order;
+  }
+
   /** The HTTP adapter restricts this operation to handlers with EditAnyOrder. */
   public async confirmDelivery(orderId: string): Promise<Order> {
     return this.unitOfWork.execute(async ({ orders }) => {

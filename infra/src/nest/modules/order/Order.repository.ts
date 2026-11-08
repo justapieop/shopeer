@@ -79,6 +79,18 @@ export class OrderItemEntity {
 
 @Injectable()
 export class TypeOrmOrderRepository implements OrderRepository {
+  public async fetchHandlerOrders(pagination: Pagination, status?: Order["status"]): Promise<Order[]> {
+    const entities = await this.orderRepository.find({
+      where: status ? { status } : {},
+      order: { createdAt: "DESC", id: "DESC" },
+      skip: paginationOffset(pagination), take: pagination.limit,
+    });
+    if (!entities.length) return [];
+    const items = await this.orderItemRepository.find({
+      where: { orderId: In(entities.map(order => order.id)) }, order: { productId: "ASC" },
+    });
+    return entities.map(order => toDomain(order, items.filter(item => item.orderId === order.id)));
+  }
   public async transitionStatus(orderId: string, from: Order["status"], to: Order["status"]): Promise<boolean> {
     requireTransaction(this.orderRepository.manager);
     const result = await this.orderRepository.update({ id: orderId, status: from }, { status: to });
