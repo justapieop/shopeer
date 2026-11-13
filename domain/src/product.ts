@@ -18,6 +18,9 @@ export class Product extends Domain {
     public readonly categoryId!: string;
     public readonly stock!: number;
     public readonly imageUrl!: string;
+    public readonly sellerId: string | null;
+    public readonly saleId: string | null;
+    public readonly saleEndsAt: Date | null;
 
     public constructor(protected readonly details: ProductDetails) {
         super(details);
@@ -28,9 +31,13 @@ export class Product extends Domain {
         this.categoryId = details.categoryId;
         this.stock = details.stock;
         this.imageUrl = details.imageUrl;
+        this.sellerId = details.sellerId ?? null;
+        this.saleId = details.saleId ?? null;
+        this.saleEndsAt = details.saleEndsAt ?? null;
     }
 
     public validate(): InvalidParametersError | null {
+        if (this.details.sellerId != null && isBlankString(this.details.sellerId)) return new InvalidParametersError("sellerId must not be blank");
         if (isBlankString(this.details.productId)) {
             return new InvalidParametersError("productId must not be blank");
         }
@@ -72,11 +79,14 @@ export class Product extends Domain {
      * so checkout must still reserve stock atomically in the database.
      */
     public hasEnoughStock(quantity: number): boolean {
-        return this.stock >= quantity;
+        return this.stock >= quantity && (!this.saleEndsAt || this.saleEndsAt.getTime() > Date.now());
     }
 }
 
 export interface ProductDetails extends DomainDetails {
+    saleId?: string | null;
+    saleEndsAt?: Date | null;
+    sellerId?: string | null;
     productId: string;
     name: string;
     description: string;

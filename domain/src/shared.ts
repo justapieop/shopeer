@@ -34,6 +34,12 @@ export class NotFoundError extends DomainError { }
 /** The request conflicts with the current state of the system. */
 export class ConflictError extends DomainError { }
 
+export class UsernameAlreadyExistsError extends ConflictError {
+  public constructor(username: string) {
+    super(`User with username ${username} already exists`);
+  }
+}
+
 /** Not enough stock for one or more products. */
 export class OutOfStockError extends ConflictError {
   public constructor(public readonly productIds: string[]) {

@@ -1,8 +1,12 @@
 export * from "./ports.js";
+export * from "./pagination.js";
+export * from "./authorization.js";
 export * from "./user.js";
 export * from "./product.js";
+export { ProductOwnershipUseCase } from "./productOwnership.js";
 export * from "./cart.js";
 export * from "./order.js";
 export * from "./transaction.js";
 export * from "./category.js";
 export * from "./cartItem.js";
+export * from "./sales.js";

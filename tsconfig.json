@@ -48,7 +48,7 @@
       "@shopeer/domain": ["./domain/src/index.ts"],
       "@shopeer/case": ["./case/src/index.ts"],
       "@shopeer/infra": ["./infra/src/index.ts"],
-      "@shopeer/app": ["./app/src/index.ts"]
+      "@shopeer/app": ["./apps/api/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist/**/*", ".next/**/*"]

@@ -1,0 +1,54 @@
+.page { min-height: 100svh; padding-inline: clamp(20px, 6vw, 80px); background: var(--background); color: var(--foreground); }
+.header, .main { max-width: 1200px; margin-inline: auto; }
+.header { min-height: 96px; display: flex; align-items: center; gap: 32px; flex-wrap: wrap; padding-block: 16px; }
+.wordmark { font-size: 24px; font-weight: 700; letter-spacing: -0.06em; color: inherit; text-decoration: none; }
+.header nav { display: flex; flex: 1; gap: 24px; font-size: 14px; }
+.header nav a { padding-block: 12px; white-space: nowrap; color: var(--muted); }
+.header nav a[aria-current] { color: var(--foreground); text-decoration: underline; text-underline-offset: 6px; }
+.main { padding-block: 32px 64px; }
+.main :global(.button) { border-radius: 6px; }
+.main :global(.button--primary) { background: var(--foreground); color: var(--background); }
+.main :global(.button--secondary) { color: var(--foreground); }
+.main h1 { font-size: 28px; font-weight: 500; letter-spacing: -0.04em; margin: 0; }
+.intro { margin: 12px 0 24px; max-width: 680px; color: var(--muted); line-height: 1.5; }
+.toolbar { display: flex; justify-content: space-between; gap: 12px; margin-block: 24px; }
+.notice { padding: 16px; background: var(--surface-secondary); line-height: 1.5; }
+.composer { margin-block: 24px; padding: 24px; background: var(--surface-secondary); }
+.composer h2, .product h2, .empty h2 { font-size: 20px; font-weight: 500; margin: 0; overflow-wrap: anywhere; }
+.composer p, .empty p { font-size: 14px; line-height: 1.5; margin-block: 12px 20px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 24px; }
+.fields, .periodForm { border: 0; padding: 0; margin: 0; min-width: 0; }
+.field { min-width: 0; }
+.select { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.select select { min-height: 40px; padding: 8px 12px; border: 1px solid var(--separator); border-radius: 6px; color: var(--foreground); background: var(--background); }
+.submit { display: flex; align-items: end; }
+.product { padding-block: 24px; border-top: 1px solid var(--separator); }
+.productHeading { display: flex; justify-content: space-between; align-items: start; gap: 24px; }
+.productHeading p { margin: 8px 0 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.productHeading > span { flex: none; font-size: 14px; }
+.quantities { display: flex; gap: 48px; margin-block: 24px; }
+.quantities dt { font-size: 14px; color: var(--muted); }
+.quantities dd { margin: 6px 0 0; font-size: 24px; font-variant-numeric: tabular-nums; }
+.muted { font-size: 14px; line-height: 1.5; color: var(--muted); margin-block: 12px; }
+.periodForm { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 24px; max-width: 840px; }
+.history { margin-top: 20px; font-size: 14px; }
+.history summary { cursor: pointer; padding-block: 10px; }
+.tableScroll { overflow-x: auto; }
+.history table { width: 100%; border-collapse: collapse; margin-top: 12px; font-variant-numeric: tabular-nums; }
+.history th { font-weight: 400; font-size: 12px; color: var(--muted); }
+.history td, .history th { text-align: right; padding: 12px 16px; border-bottom: 1px solid var(--separator); }
+.history td:first-child, .history th:first-child { text-align: left; padding-left: 0; }
+.history td { line-height: 1.5; }
+.empty { padding-block: 24px; }
+.pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 24px; }
+.page a:focus-visible, .history summary:focus-visible { outline: 2px solid var(--foreground); outline-offset: 4px; }
+@media (max-width: 700px) {
+  .header { gap: 12px 24px; justify-content: space-between; }
+  .header nav { order: 3; flex: 0 0 100%; overflow-x: auto; gap: 20px; }
+  .fields, .periodForm { grid-template-columns: 1fr; gap: 16px; }
+  .composer { padding: 20px; }
+  .productHeading { gap: 12px; }
+  .productHeading h2 { font-size: 18px; }
+  .quantities { gap: 32px; }
+  .history td, .history th { padding-inline: 8px; }
+}

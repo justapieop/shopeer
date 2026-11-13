@@ -1,13 +1,19 @@
-import { CartItem } from "@shopeer/domain";
-import type { CartItemRepository } from "./ports.js";
+import { CartChangedError, CartItem } from "@shopeer/domain";
+import type { CartItemRepository, RepositorySet, UnitOfWork } from "./ports.js";
 
 export class CartItemUseCase {
     public constructor(
+        private readonly unitOfWork: UnitOfWork<Pick<RepositorySet, "carts" | "cartItems">>,
         private readonly cartItemRepository: CartItemRepository,
     ) {}
 
+    /** Edit an existing line; additions use CartUseCase.addItem. */
     public async save(cartItem: CartItem): Promise<CartItem> {
-        return await this.cartItemRepository.save(cartItem);
+        return this.unitOfWork.execute(async ({ carts, cartItems }) => {
+            await carts.lockCart(cartItem.cartId);
+            if (!await cartItems.updateQuantity(cartItem)) throw new CartChangedError();
+            return cartItem;
+        });
     }
 
     public async fetchCartItemByItemId(

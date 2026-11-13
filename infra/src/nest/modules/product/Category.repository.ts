@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Category } from "@shopeer/domain";
 import type { CategoryRepository } from "@shopeer/case";
 import { Column, Entity, PrimaryColumn, Repository } from "typeorm";
+import { requireTransaction } from "../../../database/requireTransaction.js";
 
 @Entity({
   name: "categories",
@@ -17,13 +18,18 @@ export class CategoryEntity {
 
 @Injectable()
 export class TypeOrmCategoryRepository implements CategoryRepository {
+  public onSaved?: () => void;
+
   public constructor(
     @InjectRepository(CategoryEntity)
     private readonly categoryRepository: Repository<CategoryEntity>,
   ) { }
 
   public async save(category: Category): Promise<Category> {
-    return toDomain(await this.categoryRepository.save(toEntity(category)));
+    requireTransaction(this.categoryRepository.manager);
+    const entity: CategoryEntity = await this.categoryRepository.save(toEntity(category));
+    this.onSaved?.();
+    return toDomain(entity);
   }
 
   public async fetchCategoryById(categoryId: string): Promise<Category | null> {

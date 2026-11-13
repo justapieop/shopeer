@@ -26,14 +26,14 @@ const PLENTY: string = "prod-clean-code";
 interface HttpResult {
   status: number;
   body: any;
+  cookie: string | undefined;
 }
 
-async function call(method: string, path: string, userId?: string, body?: unknown): Promise<HttpResult> {
+async function call(method: string, path: string, cookie?: string, body?: unknown): Promise<HttpResult> {
   const headers: Record<string, string> = { "content-type": "application/json", };
 
-  if (userId) {
-    // Temporary identity header, see CurrentUserId.decorator.ts
-    headers["x-user-id"] = userId;
+  if (cookie) {
+    headers["cookie"] = cookie;
   }
 
   const response: Response = await fetch(`${BASE_URL}${path}`, {
@@ -43,7 +43,9 @@ async function call(method: string, path: string, userId?: string, body?: unknow
   });
   const text: string = await response.text();
 
-  return { status: response.status, body: text ? JSON.parse(text) : null, };
+  const sessionCookie = response.headers.getSetCookie()
+    .find((value: string) => value.startsWith("access_token="))?.split(";")[0];
+  return { status: response.status, body: text ? JSON.parse(text) : null, cookie: sessionCookie, };
 }
 
 async function stockOf(productId: string): Promise<number> {
@@ -64,19 +66,24 @@ async function createBuyer(index: number): Promise<string> {
     throw new Error(`Registration failed (HTTP ${status}): ${JSON.stringify(body)}`);
   }
 
+  const login = await call("POST", "/auth/login", undefined, { username, password: "Race@123456789", });
+  if (login.status !== 201 || !login.cookie) {
+    throw new Error(`Login failed or did not set a session cookie (HTTP ${login.status})`);
+  }
+
   // Add the two products in a random order: the checkout must not deadlock
   // whatever order the cart was filled in.
   const products: string[] = Math.random() < 0.5 ? [SCARCE, PLENTY] : [PLENTY, SCARCE];
 
   for (const productId of products) {
-    const added: HttpResult = await call("POST", "/cart/items", body.id, { productId, quantity: 1, });
+    const added: HttpResult = await call("POST", "/cart/items", login.cookie, { productId, quantity: 1, });
 
     if (added.status !== 200) {
       throw new Error(`Add to cart failed (HTTP ${added.status}): ${JSON.stringify(added.body)}`);
     }
   }
 
-  return body.id;
+  return login.cookie;
 }
 
 async function main(): Promise<void> {
@@ -88,12 +95,12 @@ async function main(): Promise<void> {
   }
 
   console.log(`Stock before: ${SCARCE}=${scarceBefore}, ${PLENTY}=${plentyBefore}`);
-  console.log(`Preparing ${BUYERS} buyers (register + fill cart)...`);
+  console.log(`Preparing ${BUYERS} buyers (register + log in + fill cart)...`);
   const buyers: string[] = await Promise.all(Array.from({ length: BUYERS, }, (_: unknown, i: number) => createBuyer(i)));
 
   console.log(`All ${BUYERS} buyers press "Checkout" at the same moment...`);
   const started: number = performance.now();
-  const results: HttpResult[] = await Promise.all(buyers.map((userId: string) => call("POST", "/checkout", userId)));
+  const results: HttpResult[] = await Promise.all(buyers.map((cookie: string) => call("POST", "/checkout", cookie)));
   const elapsed: number = Math.round(performance.now() - started);
 
   const tally: Map<string, number> = new Map();

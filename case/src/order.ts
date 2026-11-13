@@ -1,4 +1,5 @@
 import {
+  ConflictError,
   EmptyCartError,
   NotFoundError,
   Order,
@@ -9,21 +10,60 @@ import {
   type Product,
 } from "@shopeer/domain";
 import type {
-  CartItemRepository,
-  CartRepository,
   IdGenerator,
   OrderRepository,
-  ProductRepository,
+  RepositorySet,
+  UnitOfWork,
 } from "./ports.js";
+import { paginationOffset, type Pagination } from "./pagination.js";
 
 export class OrderUseCase {
   public constructor(
-    private readonly cartRepository: CartRepository,
-    private readonly cartItemRepository: CartItemRepository,
-    private readonly productRepository: ProductRepository,
+    private readonly unitOfWork: UnitOfWork,
     private readonly orderRepository: OrderRepository,
     private readonly idGenerator: IdGenerator,
   ) {}
+
+  /** The handler HTTP adapter requires EditAnyOrder for these cross-buyer reads. */
+  public async listHandlerOrders(pagination: Pagination = { page: 1, limit: 20 }, status?: Order["status"]): Promise<Order[]> {
+    paginationOffset(pagination);
+    return this.orderRepository.fetchHandlerOrders(pagination, status);
+  }
+
+  public async getHandlerOrder(orderId: string): Promise<Order> {
+    const order = await this.orderRepository.fetchOrderById(orderId);
+    if (!order) throw new NotFoundError(`Order ${orderId} not found`);
+    return order;
+  }
+
+  /** The HTTP adapter restricts this operation to handlers with EditAnyOrder. */
+  public async confirmDelivery(orderId: string): Promise<Order> {
+    return this.unitOfWork.execute(async ({ orders }) => {
+      const order = await orders.fetchOrderById(orderId);
+      if (!order) throw new NotFoundError(`Order ${orderId} not found`);
+      if (order.status === "delivered" || order.status === "completed") return order;
+      if (order.status !== "pending") throw new ConflictError("Only pending orders can be marked delivered");
+      await orders.transitionStatus(orderId, "pending", "delivered");
+      const updated = await orders.fetchOrderById(orderId);
+      if (!updated || (updated.status !== "delivered" && updated.status !== "completed")) {
+        throw new ConflictError("Order changed before delivery could be confirmed");
+      }
+      return updated;
+    });
+  }
+
+  public async confirmReceipt(userId: string, orderId: string): Promise<Order> {
+    return this.unitOfWork.execute(async ({ orders }) => {
+      const order = await orders.fetchOrderById(orderId);
+      if (!order || order.userId !== userId) throw new NotFoundError(`Order ${orderId} not found`);
+      if (order.status === "completed") return order;
+      if (order.status !== "delivered") throw new ConflictError("The handler must confirm delivery before you can confirm receipt");
+      await orders.transitionStatus(orderId, "delivered", "completed");
+      const updated = await orders.fetchOrderById(orderId);
+      if (!updated || updated.status !== "completed") throw new ConflictError("Order changed before receipt could be confirmed");
+      return updated;
+    });
+  }
 
   /**
    * Turns the user's whole cart into an order.
@@ -34,21 +74,33 @@ export class OrderUseCase {
    * atomically and throws `OutOfStockError` for the buyer who comes second.
    */
   public async checkout(userId: string): Promise<Order> {
+    return this.unitOfWork.execute((repositories) =>
+      this.checkoutWithinTransaction(userId, repositories),
+    );
+  }
+
+  private async checkoutWithinTransaction(
+    userId: string,
+    { carts, cartItems, products: productRepository, orders }: RepositorySet,
+  ): Promise<Order> {
     const cart: Cart | null =
-      await this.cartRepository.fetchCartByUserId(userId);
+      await carts.fetchCartByUserId(userId);
 
     if (!cart) {
       throw new EmptyCartError();
     }
 
+    // All cart writes take this same lock before reading any cart lines.
+    await carts.lockCart(cart.cartId);
+
     const items: CartItem[] =
-      await this.cartItemRepository.fetchCartItemsByCartId(cart.cartId);
+      await cartItems.fetchCartItemsByCartId(cart.cartId);
 
     if (items.length === 0) {
       throw new EmptyCartError();
     }
 
-    const products: Product[] = await this.productRepository.fetchProductsByIds(
+    const products: Product[] = await productRepository.fetchProductsByIds(
       items.map((item: CartItem) => item.productId),
     );
     const productsById: Map<string, Product> = new Map(
@@ -88,6 +140,10 @@ export class OrderUseCase {
             orderItemId: this.idGenerator.generate(),
             orderId,
             productId: item.productId,
+            sellerId: productsById.get(item.productId)!.sellerId,
+            saleId: productsById.get(item.productId)!.saleId,
+            name: productsById.get(item.productId)!.name,
+            imageUrl: productsById.get(item.productId)!.imageUrl,
             // Snapshot of today's price: later price changes do not alter this order.
             unitPrice: productsById.get(item.productId)!.price,
             quantity: item.quantity,
@@ -95,14 +151,15 @@ export class OrderUseCase {
       ),
     });
 
-    await this.orderRepository.placeOrder(order, cart.cartId);
+    await orders.placeOrder(order, cart.cartId);
 
     return order;
   }
 
   /** The user's orders, newest first. */
-  public async listOrders(userId: string): Promise<Order[]> {
-    return await this.orderRepository.fetchOrdersByUserId(userId);
+  public async listOrders(userId: string, pagination: Pagination = { page: 1, limit: 20 }): Promise<Order[]> {
+    paginationOffset(pagination);
+    return await this.orderRepository.fetchOrdersByUserId(userId, pagination);
   }
 
   public async getOrder(userId: string, orderId: string): Promise<Order> {
@@ -114,6 +171,17 @@ export class OrderUseCase {
       throw new NotFoundError(`Order ${orderId} not found`);
     }
 
+    return order;
+  }
+
+  public async listSellerOrders(sellerId: string, pagination: Pagination = { page: 1, limit: 20 }): Promise<Order[]> {
+    paginationOffset(pagination);
+    return this.orderRepository.fetchOrdersBySellerId(sellerId, pagination);
+  }
+
+  public async getSellerOrder(sellerId: string, orderId: string): Promise<Order> {
+    const order = await this.orderRepository.fetchOrderBySellerId(sellerId, orderId);
+    if (!order) throw new NotFoundError(`Order ${orderId} not found`);
     return order;
   }
 }

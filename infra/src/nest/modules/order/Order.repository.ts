@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
+import { InjectRepository } from "@nestjs/typeorm";
 import {
   CartChangedError,
   Order,
@@ -7,9 +7,10 @@ import {
   OutOfStockError,
 } from "@shopeer/domain";
 import type { OrderRepository } from "@shopeer/case";
+import { paginationOffset, type Pagination } from "@shopeer/case";
 import {
   Column,
-  DataSource,
+  Check,
   Entity,
   In,
   PrimaryColumn,
@@ -18,19 +19,28 @@ import {
   type UpdateResult,
 } from "typeorm";
 import { bigintToNumber } from "../../common/transformers.js";
+import { requireTransaction } from "../../../database/requireTransaction.js";
 import { CartEntity } from "../cart/Cart.repository.js";
 import { CartItemEntity } from "../cart/CartItem.repository.js";
 import { ProductEntity } from "../product/Product.repository.js";
+import { SalesPeriodEntity } from "../product/Sales.repository.js";
 
 @Entity({
   name: "orders",
 })
+@Check("CHK_orders_status", `"status" IN ('pending', 'delivered', 'completed', 'cancelled')`)
 export class OrderEntity {
   @PrimaryColumn({ type: "text" })
   public readonly id!: string;
 
   @Column({ type: "text", name: "user_id" })
   public readonly userId!: string;
+
+  @Column({ type: "text", name: "cart_id" })
+  public readonly cartId!: string;
+
+  @Column({ type: "text", default: "pending" })
+  public readonly status!: Order["status"];
 
   @Column({ type: "bigint", name: "total_amount", transformer: bigintToNumber })
   public readonly totalAmount!: number;
@@ -43,6 +53,14 @@ export class OrderEntity {
   name: "order_items",
 })
 export class OrderItemEntity {
+  @Column({ type: "text", name: "sale_id", nullable: true })
+  public readonly saleId!: string | null;
+  @Column({ type: "text", name: "seller_id", nullable: true })
+  public readonly sellerId!: string | null;
+  @Column({ type: "text", name: "product_name", default: "Product" })
+  public readonly name!: string;
+  @Column({ type: "text", name: "image_url", default: "" })
+  public readonly imageUrl!: string;
   @PrimaryColumn({ type: "text" })
   public readonly id!: string;
 
@@ -61,9 +79,26 @@ export class OrderItemEntity {
 
 @Injectable()
 export class TypeOrmOrderRepository implements OrderRepository {
+  public async fetchHandlerOrders(pagination: Pagination, status?: Order["status"]): Promise<Order[]> {
+    const entities = await this.orderRepository.find({
+      where: status ? { status } : {},
+      order: { createdAt: "DESC", id: "DESC" },
+      skip: paginationOffset(pagination), take: pagination.limit,
+    });
+    if (!entities.length) return [];
+    const items = await this.orderItemRepository.find({
+      where: { orderId: In(entities.map(order => order.id)) }, order: { productId: "ASC" },
+    });
+    return entities.map(order => toDomain(order, items.filter(item => item.orderId === order.id)));
+  }
+  public async transitionStatus(orderId: string, from: Order["status"], to: Order["status"]): Promise<boolean> {
+    requireTransaction(this.orderRepository.manager);
+    const result = await this.orderRepository.update({ id: orderId, status: from }, { status: to });
+    return result.affected === 1;
+  }
+  public onProductsChanged?: () => void;
+
   public constructor(
-    @InjectDataSource()
-    private readonly dataSource: DataSource,
     @InjectRepository(OrderEntity)
     private readonly orderRepository: Repository<OrderEntity>,
     @InjectRepository(OrderItemEntity)
@@ -71,10 +106,12 @@ export class TypeOrmOrderRepository implements OrderRepository {
   ) {}
 
   /**
-   * Everything runs inside ONE database transaction: if any step throws, the
-   * transaction is rolled back and nothing is changed (all or nothing).
+   * Uses the transaction supplied by the Unit of Work. Errors must propagate
+   * to its callback so stock, order and cart changes are rolled back together.
    */
   public async placeOrder(order: Order, cartId: string): Promise<void> {
+    const manager: EntityManager = this.orderRepository.manager;
+    requireTransaction(manager);
     // Always touch products in the same order (sorted by id). Two checkouts
     // sharing several products then wait for each other instead of each
     // holding a lock the other needs (a deadlock).
@@ -83,52 +120,49 @@ export class TypeOrmOrderRepository implements OrderRepository {
         a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
     );
 
-    await this.dataSource.transaction(async (manager: EntityManager) => {
-      await ensureCartUnchanged(manager, cartId, items);
+    await ensureCartUnchanged(manager, cartId, items);
 
-      // Reserve stock. Each UPDATE is atomic: Postgres locks the product row,
-      // re-checks "stock >= quantity" against the latest committed value, then
-      // subtracts. A concurrent checkout of the same product waits for this
-      // transaction to finish and then sees the reduced stock. So two buyers
-      // can never both take the last unit, and stock never goes below zero.
-      const outOfStock: string[] = [];
-
-      for (const item of items) {
-        const result: UpdateResult = await manager
-          .createQueryBuilder()
-          .update(ProductEntity)
-          .set({ stock: () => `"stock" - :quantity` })
-          .where(`"id" = :productId AND "stock" >= :quantity`, {
-            productId: item.productId,
-            quantity: item.quantity,
-          })
-          .execute();
-
-        if (result.affected === 0) {
-          outOfStock.push(item.productId);
-        }
+    // Conditional updates lock and re-check stock after a competing checkout
+    // commits. Read-time stock checks alone cannot prevent overselling.
+    const outOfStock: string[] = [];
+    for (const item of items) {
+      const result: UpdateResult = await manager
+        .createQueryBuilder()
+        .update(ProductEntity)
+        .set({ stock: () => `"stock" - :quantity` })
+        .where(`"id" = :productId AND "stock" >= :quantity`, {
+          productId: item.productId,
+          quantity: item.quantity,
+        })
+        .andWhere(`"seller_id" IS NOT DISTINCT FROM :sellerId`, { sellerId: item.sellerId })
+        .andWhere(`"sale_id" IS NOT DISTINCT FROM :saleId`, { saleId: item.saleId })
+        .andWhere(`("sale_ends_at" IS NULL OR "sale_ends_at" > clock_timestamp())`)
+        .execute();
+      if (result.affected === 0) {
+        outOfStock.push(item.productId);
+      } else if (item.saleId) {
+        const period = await manager.createQueryBuilder().update(SalesPeriodEntity)
+          .set({ remaining: () => `"remaining" - :quantity` })
+          .where(`"id" = :id AND "remaining" >= :quantity AND "ends_at" > clock_timestamp()`, { id: item.saleId, quantity: item.quantity }).execute();
+        if (period.affected !== 1) outOfStock.push(item.productId);
       }
+    }
 
-      if (outOfStock.length > 0) {
-        // Throwing rolls back the stock already taken for the other products.
-        throw new OutOfStockError(outOfStock);
-      }
+    if (outOfStock.length > 0) {
+      throw new OutOfStockError(outOfStock);
+    }
 
-      await manager.insert(OrderEntity, toOrderEntity(order));
-      await manager.insert(OrderItemEntity, order.items.map(toOrderItemEntity));
+    await manager.insert(OrderEntity, toOrderEntity(order));
+    await manager.insert(OrderItemEntity, order.items.map(toOrderItemEntity));
 
-      // Only remove the lines that were ordered: anything added to the cart
-      // meanwhile (e.g. from another tab) stays in the cart.
-      await manager.delete(CartItemEntity, {
-        cartId,
-        productId: In(items.map((item: OrderItem) => item.productId)),
-      });
-      await manager.update(
-        CartEntity,
-        { id: cartId },
-        { updatedAt: new Date() },
-      );
+    // Remove only the purchased lines. Application additions wait on the parent
+    // cart lock and run after checkout commits.
+    await manager.delete(CartItemEntity, {
+      cartId,
+      productId: In(items.map((item: OrderItem) => item.productId)),
     });
+    await manager.update(CartEntity, { id: cartId }, { updatedAt: new Date() });
+    this.onProductsChanged?.();
   }
 
   public async fetchOrderById(orderId: string): Promise<Order | null> {
@@ -148,10 +182,12 @@ export class TypeOrmOrderRepository implements OrderRepository {
     return toDomain(entity, items);
   }
 
-  public async fetchOrdersByUserId(userId: string): Promise<Order[]> {
+  public async fetchOrdersByUserId(userId: string, pagination: Pagination): Promise<Order[]> {
     const entities: OrderEntity[] = await this.orderRepository.find({
       where: { userId },
-      order: { createdAt: "DESC" },
+      order: { createdAt: "DESC", id: "DESC" },
+      skip: paginationOffset(pagination),
+      take: pagination.limit,
     });
 
     if (entities.length === 0) {
@@ -163,12 +199,30 @@ export class TypeOrmOrderRepository implements OrderRepository {
       order: { productId: "ASC" },
     });
 
-    return entities.map((entity: OrderEntity) =>
-      toDomain(
-        entity,
-        items.filter((item: OrderItemEntity) => item.orderId === entity.id),
-      ),
-    );
+    const itemsByOrder = new Map<string, OrderItemEntity[]>();
+    for (const item of items) {
+      const group = itemsByOrder.get(item.orderId) ?? [];
+      group.push(item);
+      itemsByOrder.set(item.orderId, group);
+    }
+    return entities.map((entity) => toDomain(entity, itemsByOrder.get(entity.id) ?? []));
+  }
+
+  public async fetchOrdersBySellerId(sellerId: string, pagination: Pagination): Promise<Order[]> {
+    const entities = await this.orderRepository.createQueryBuilder("placed")
+      .where(`EXISTS (SELECT 1 FROM "order_items" AS seller_line WHERE seller_line."order_id" = placed."id" AND seller_line."seller_id" = :sellerId)`, { sellerId })
+      .orderBy("placed.createdAt", "DESC").addOrderBy("placed.id", "DESC")
+      .skip(paginationOffset(pagination)).take(pagination.limit).getMany();
+    if (!entities.length) return [];
+    const items = await this.orderItemRepository.find({ where: { orderId: In(entities.map((order) => order.id)), sellerId }, order: { productId: "ASC" } });
+    return entities.map((order) => toDomain(order, items.filter((item) => item.orderId === order.id)));
+  }
+
+  public async fetchOrderBySellerId(sellerId: string, orderId: string): Promise<Order | null> {
+    const items = await this.orderItemRepository.find({ where: { orderId, sellerId }, order: { productId: "ASC" } });
+    if (!items.length) return null;
+    const order = await this.orderRepository.findOneBy({ id: orderId });
+    return order ? toDomain(order, items) : null;
   }
 }
 
@@ -203,15 +257,20 @@ async function ensureCartUnchanged(
 function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
   return new Order({
     orderId: entity.id,
+    cartId: entity.cartId,
     userId: entity.userId,
     createdAt: entity.createdAt,
-    status: "completed",
+    status: entity.status,
     items: items.map(
       (item: OrderItemEntity) =>
         new OrderItem({
           orderItemId: item.id,
           orderId: item.orderId,
           productId: item.productId,
+          sellerId: item.sellerId,
+          saleId: item.saleId,
+          name: item.name,
+          imageUrl: item.imageUrl,
           unitPrice: item.unitPrice,
           quantity: item.quantity,
         }),
@@ -222,6 +281,8 @@ function toDomain(entity: OrderEntity, items: OrderItemEntity[]): Order {
 function toOrderEntity(order: Order): OrderEntity {
   return Object.assign(new OrderEntity(), {
     id: order.orderId,
+    cartId: order.cartId,
+    status: order.status,
     userId: order.userId,
     totalAmount: order.totalAmount,
     createdAt: order.createdAt,
@@ -230,6 +291,10 @@ function toOrderEntity(order: Order): OrderEntity {
 
 function toOrderItemEntity(item: OrderItem): OrderItemEntity {
   return Object.assign(new OrderItemEntity(), {
+    saleId: item.saleId,
+    sellerId: item.sellerId,
+    name: item.name,
+    imageUrl: item.imageUrl,
     id: item.orderItemId,
     orderId: item.orderId,
     productId: item.productId,

@@ -4,6 +4,7 @@ import {
   type Product,
 } from "@shopeer/domain";
 import type { CategoryRepository, ProductRepository } from "./ports.js";
+import { paginationOffset, type Pagination } from "./pagination.js";
 
 export class ProductUseCase {
   public constructor(
@@ -12,9 +13,10 @@ export class ProductUseCase {
   ) { }
 
   /** Lists every product, or only those of one category when `categoryId` is given. */
-  public async listProducts(categoryId?: string): Promise<Product[]> {
+  public async listProducts(categoryId?: string, pagination: Pagination = { page: 1, limit: 20 }): Promise<Product[]> {
+    paginationOffset(pagination);
     if (categoryId === undefined) {
-      return await this.productRepository.fetchAllProducts();
+      return await this.productRepository.fetchAllProducts(pagination);
     }
 
     const category: Category | null = await this.categoryRepository.fetchCategoryById(categoryId);
@@ -23,7 +25,7 @@ export class ProductUseCase {
       throw new NotFoundError(`Category ${categoryId} not found`);
     }
 
-    return await this.productRepository.fetchProductsByCategory(categoryId);
+    return await this.productRepository.fetchProductsByCategory(categoryId, pagination);
   }
 
   public async getProduct(productId: string): Promise<Product> {

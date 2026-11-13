@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { UserUseCase } from "@shopeer/case";
 import type { User as DomainUser } from "@shopeer/domain";
 import jwt from "jsonwebtoken";
+import { ACCESS_TOKEN_COOKIE } from "../auth-cookie.js";
 
 interface UserLookup {
   token: string;
@@ -33,6 +34,11 @@ export class UserPipe implements PipeTransform<UserLookup, Promise<DomainUser>> 
       throw new UnauthorizedException("Invalid access token subject");
     }
 
+    // Keep existing access tokens valid, but never accept a refresh token here.
+    if (payload["token_use"] !== undefined && payload["token_use"] !== "access") {
+      throw new UnauthorizedException("Invalid access token type");
+    }
+
     const user: DomainUser | null = await this.userUseCase.fetchUserById(payload.sub);
 
     if (!user) {
@@ -47,23 +53,23 @@ export class UserPipe implements PipeTransform<UserLookup, Promise<DomainUser>> 
   }
 }
 
-const userParameter = createParamDecorator((data: UserOptions, context: ExecutionContext): UserLookup => {
-  const request: Request = context.switchToHttp().getRequest();
+export function getUserLookup(request: Request, options: UserOptions = defaultUserFetchOptions): UserLookup {
+  const token: unknown = request.cookies?.[ACCESS_TOKEN_COOKIE];
 
-  const tokenHeader: string | undefined = request.headers.authorization;
-
-  if (!tokenHeader) {
+  if (token === undefined) {
     throw new UnauthorizedException("Missing access token");
   }
 
-  const match: RegExpExecArray | null = /^Bearer ([^\s]+)$/i.exec(tokenHeader);
-
-  if (!match?.[1]) {
-    throw new UnauthorizedException("Invalid Authorization header");
+  if (typeof token !== "string" || !token.trim()) {
+    throw new UnauthorizedException("Invalid access token cookie");
   }
 
-  return { token: match[1], options: data };
-});
+  return { token, options };
+}
+
+const userParameter = createParamDecorator((data: UserOptions, context: ExecutionContext): UserLookup =>
+  getUserLookup(context.switchToHttp().getRequest<Request>(), data),
+);
 
 export function User(options: UserOptions = defaultUserFetchOptions): ParameterDecorator {
   return userParameter(options, UserPipe);
@@ -71,10 +77,8 @@ export function User(options: UserOptions = defaultUserFetchOptions): ParameterD
 
 export interface UserOptions {
   allowSuspended?: boolean,
-  permissons?: number,
 }
 
 export const defaultUserFetchOptions: UserOptions = {
   allowSuspended: false,
-  permissons: 0
 };

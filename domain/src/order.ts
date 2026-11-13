@@ -10,6 +10,10 @@ export class OrderItem extends Domain {
     public readonly orderItemId!: string;
     public readonly orderId!: string;
     public readonly productId!: string;
+    public readonly sellerId: string | null;
+    public readonly saleId: string | null;
+    public readonly name: string;
+    public readonly imageUrl: string;
     /** Price in VND of one unit when the order was placed. */
     public readonly unitPrice!: number;
     public readonly quantity!: number;
@@ -19,6 +23,10 @@ export class OrderItem extends Domain {
         this.orderItemId = details.orderItemId;
         this.orderId = details.orderId;
         this.productId = details.productId;
+        this.sellerId = details.sellerId ?? null;
+        this.saleId = details.saleId ?? null;
+        this.name = details.name ?? details.productId;
+        this.imageUrl = details.imageUrl ?? "";
         this.unitPrice = details.unitPrice;
         this.quantity = details.quantity;
     }
@@ -57,6 +65,10 @@ export class OrderItem extends Domain {
 }
 
 export interface OrderItemDetails extends DomainDetails {
+    saleId?: string | null;
+    sellerId?: string | null;
+    name?: string;
+    imageUrl?: string;
     orderItemId: string;
     orderId: string;
     productId: string;
@@ -69,7 +81,7 @@ export class Order extends Domain {
     public readonly userId!: string;
     public readonly cartId!: string;
     public readonly items!: readonly OrderItem[];
-    public readonly status!: "pending" | "completed" | "cancelled";
+    public readonly status!: OrderStatus;
     /** Sum of every item's subtotal, in VND. */
     public readonly totalAmount!: number;
     public readonly createdAt!: Date;
@@ -103,10 +115,10 @@ export class Order extends Domain {
 
         if (
             !this.details.status ||
-            !["pending", "completed", "cancelled"].includes(this.details.status)
+            !["pending", "delivered", "completed", "cancelled"].includes(this.details.status)
         ) {
             return new InvalidParametersError(
-                "status must be one of: pending, completed, cancelled",
+                "status must be one of: pending, delivered, completed, cancelled",
             );
         }
 
@@ -138,11 +150,14 @@ export class Order extends Domain {
     }
 }
 
+/** Handler confirms delivery before the buyer confirms receipt and completes the order. */
+export type OrderStatus = "pending" | "delivered" | "completed" | "cancelled";
+
 export interface OrderDetails extends DomainDetails {
     orderId: string;
     userId: string;
     cartId: string;
     items: OrderItem[];
     createdAt?: Date;
-    status: "pending" | "completed" | "cancelled";
+    status: OrderStatus;
 }

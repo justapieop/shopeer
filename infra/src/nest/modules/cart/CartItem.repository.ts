@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { CartItem } from "@shopeer/domain";
 import type { CartItemRepository } from "@shopeer/case";
 import { Column, Entity, PrimaryColumn, Repository, Unique, type DeleteResult } from "typeorm";
+import { requireTransaction } from "../../../database/requireTransaction.js";
 
 @Entity({
   name: "cart_items",
@@ -38,7 +39,16 @@ export class TypeOrmCartItemRepository implements CartItemRepository {
   ) { }
 
   public async save(cartItem: CartItem): Promise<CartItem> {
+    requireTransaction(this.cartItemRepository.manager);
     return toDomain(await this.cartItemRepository.save(toEntity(cartItem)));
+  }
+
+  public async updateQuantity(cartItem: CartItem): Promise<boolean> {
+    requireTransaction(this.cartItemRepository.manager);
+    const result = await this.cartItemRepository.update({
+      id: cartItem.itemId, cartId: cartItem.cartId, productId: cartItem.productId,
+    }, { quantity: cartItem.quantity });
+    return (result.affected ?? 0) > 0;
   }
 
   public async fetchCartItemByItemId(itemId: string): Promise<CartItem | null> {
@@ -71,6 +81,7 @@ export class TypeOrmCartItemRepository implements CartItemRepository {
    * the quantities together.
    */
   public async addOrIncreaseQuantity(cartItem: CartItem): Promise<CartItem> {
+    requireTransaction(this.cartItemRepository.manager);
     const rows: CartItemRow[] = await this.cartItemRepository.query(
       `INSERT INTO "cart_items" ("id", "cart_id", "product_id", "quantity")
        VALUES ($1, $2, $3, $4)
@@ -90,11 +101,13 @@ export class TypeOrmCartItemRepository implements CartItemRepository {
   }
 
   public async deleteCartItem(cartId: string, productId: string): Promise<boolean> {
+    requireTransaction(this.cartItemRepository.manager);
     const result: DeleteResult = await this.cartItemRepository.delete({ cartId, productId, });
     return (result.affected ?? 0) > 0;
   }
 
   public async deleteCartItemsByCartId(cartId: string): Promise<void> {
+    requireTransaction(this.cartItemRepository.manager);
     await this.cartItemRepository.delete({ cartId, });
   }
 }

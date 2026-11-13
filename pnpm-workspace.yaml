@@ -1,5 +1,9 @@
 packages:
-  - app/
+  - apps/*
+  - packages/*
   - domain/
   - case/
   - infra/
+allowBuilds:
+  '@scarf/scarf': false
+  bcrypt: false

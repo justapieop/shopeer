@@ -1,10 +1,11 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createId } from "@paralleldrive/cuid2";
 import { Algorithm, hash, verify } from "@node-rs/argon2";
 import { UserUseCase } from "@shopeer/case";
-import { User } from "@shopeer/domain";
+import { User, UsernameAlreadyExistsError } from "@shopeer/domain";
 import { ConfigService } from "@nestjs/config";
 import jwt from "jsonwebtoken";
+import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS } from "../../common/auth-cookie.js";
 
 @Injectable()
 export class AuthService {
@@ -15,11 +16,11 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) { }
 
-  public async registration(username: string, password: string): Promise<User | null> {
+  public async registration(username: string, password: string): Promise<User> {
     const user: User | null = await this.userUseCase.fetchUserByUsername(username);
 
     if (user) {
-      return null;
+      throw new UsernameAlreadyExistsError(username);
     }
 
     const newUser: User = new User({
@@ -29,7 +30,7 @@ export class AuthService {
       suspended: false,
     });
 
-    return this.userUseCase.save(newUser);
+    return this.userUseCase.create(newUser);
   }
 
   public async login(username: string, password: string): Promise<User | null> {
@@ -50,16 +51,41 @@ export class AuthService {
 
   public signToken(user: User): string { 
     const secret: string = this.configService.getOrThrow("JWT_SECRET");
-    return jwt.sign({ sub: user.id, }, secret, { expiresIn: "1h", });
+    return jwt.sign({ sub: user.id, token_use: "access" }, secret, { algorithm: "HS256", expiresIn: ACCESS_TOKEN_TTL_SECONDS, });
   }
 
-  public verifyToken(token: string): boolean { 
+  public signRefreshToken(user: User): string {
     const secret: string = this.configService.getOrThrow("JWT_SECRET");
-    try {
-      jwt.verify(token, secret, { complete: true, ignoreExpiration: false, });
-      return true;
-    } catch (e: any) { 
-      return false;
+    return jwt.sign({ sub: user.id, token_use: "refresh" }, secret, {
+      algorithm: "HS256", expiresIn: REFRESH_TOKEN_TTL_SECONDS, jwtid: createId(),
+    });
+  }
+
+  public async refresh(token: unknown): Promise<User> {
+    if (typeof token !== "string" || !token.trim()) {
+      throw new UnauthorizedException("Missing or invalid refresh token");
     }
+
+    const secret: string = this.configService.getOrThrow("JWT_SECRET");
+    let payload: jwt.JwtPayload | string;
+    try {
+      payload = jwt.verify(token, secret, { algorithms: ["HS256"] });
+    } catch {
+      throw new UnauthorizedException("Invalid or expired refresh token");
+    }
+
+    if (typeof payload === "string" || payload["token_use"] !== "refresh" ||
+      typeof payload.sub !== "string" || !payload.sub.trim() || typeof payload.exp !== "number") {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
+    const user = await this.userUseCase.fetchUserById(payload.sub);
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+    if (user.suspended) {
+      throw new ForbiddenException("User is suspended");
+    }
+    return user;
   }
 }
